@@ -1,0 +1,134 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  FULFILLMENT // Camille: stock levels + order exceptions + tracking/fulfillment
+  OUTREACH // Mary: customer outreach notes/status, read-only stock
+  ADMIN // Emilie: full access, can confirm resolution
+}
+
+enum StockStatus {
+  OUT_OF_STOCK
+  LOW_STOCK
+  HIGH_STOCK
+}
+
+enum ExceptionType {
+  OUT_OF_STOCK
+  DAMAGED
+  LOST
+  WRONG_ITEM
+  OTHER
+}
+
+// Where a single order-line exception currently sits in the resolution process.
+// Only CONFIRMED_RESOLVED or CLOSED_NO_RESPONSE count as "crossed off".
+enum ExceptionStage {
+  LOGGED // Camille logged the exception
+  OUTREACH_SENT // Mary emailed the customer
+  CUSTOMER_RESPONDED // Customer replied and made a choice
+  FULFILLED // Camille shipped the replacement / took the fulfillment action
+  CONFIRMED_RESOLVED // Admin verified the corrected order actually went out / refund landed
+  CLOSED_NO_RESPONSE // Customer never responded after follow-up; parked, not "forgotten"
+}
+
+enum ResolutionType {
+  REPLACEMENT_SHIPPED
+  REFUNDED
+  NO_RESPONSE
+  OTHER
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role
+  createdAt    DateTime @default(now())
+
+  stockChecks         StockCheck[]     @relation("StockCheckedBy")
+  exceptionsCreated   Exception[]      @relation("ExceptionCreatedBy")
+  exceptionsUpdated   Exception[]      @relation("ExceptionLastUpdatedBy")
+  exceptionsConfirmed Exception[]      @relation("ExceptionConfirmedBy")
+  exceptionEvents     ExceptionEvent[] @relation("ExceptionEventActor")
+}
+
+// Append-only log of physical stock checks. "Current" status for a product
+// is whichever check is most recent.
+model StockCheck {
+  id          String      @id @default(cuid())
+  productName String
+  status      StockStatus
+  notes       String?
+
+  checkedById String
+  checkedBy   User     @relation("StockCheckedBy", fields: [checkedById], references: [id])
+  checkedAt   DateTime @default(now())
+
+  @@index([productName, checkedAt])
+}
+
+model Exception {
+  id            String        @id @default(cuid())
+  orderNumber   String
+  productName   String
+  exceptionType ExceptionType @default(OUT_OF_STOCK)
+
+  stage          ExceptionStage @default(LOGGED)
+  stageChangedAt DateTime       @default(now())
+
+  // Camille's fields
+  fulfillmentNotes String?
+  trackingNumber   String?
+  carrier          String?
+  shippedAt        DateTime?
+
+  // Mary's fields
+  outreachNotes  String?
+  customerChoice String?
+
+  // Set once the exception reaches a terminal stage
+  resolutionType ResolutionType?
+
+  // Admin-only verification
+  confirmedResolvedAt   DateTime?
+  confirmedResolvedById String?
+  confirmedResolvedBy   User?     @relation("ExceptionConfirmedBy", fields: [confirmedResolvedById], references: [id])
+
+  createdById String
+  createdBy   User     @relation("ExceptionCreatedBy", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+
+  lastUpdatedById String?
+  lastUpdatedBy   User?    @relation("ExceptionLastUpdatedBy", fields: [lastUpdatedById], references: [id])
+  updatedAt       DateTime @updatedAt
+
+  events ExceptionEvent[]
+
+  @@index([orderNumber])
+  @@index([stage])
+  @@index([productName])
+}
+
+// Human-readable audit trail: every stage change / field edit on an exception.
+model ExceptionEvent {
+  id          String   @id @default(cuid())
+  exceptionId String
+  exception   Exception @relation(fields: [exceptionId], references: [id], onDelete: Cascade)
+  actorId     String
+  actor       User      @relation("ExceptionEventActor", fields: [actorId], references: [id])
+  action      String
+  createdAt   DateTime  @default(now())
+
+  @@index([exceptionId, createdAt])
+}
