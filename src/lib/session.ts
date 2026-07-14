@@ -5,11 +5,22 @@ import { cookies } from "next/headers";
 const SESSION_COOKIE = "session";
 const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
-const secretKey = process.env.SESSION_SECRET;
-if (!secretKey) {
-  throw new Error("SESSION_SECRET environment variable is not set");
+// Checked lazily (on first actual use) rather than at module import time.
+// Next.js loads this module while building its server-actions manifest, and
+// that build step doesn't have runtime env vars available — a top-level
+// throw here would fail `next build` even when SESSION_SECRET is correctly
+// set for the deployed app itself.
+let encodedKey: Uint8Array | undefined;
+function getEncodedKey() {
+  if (!encodedKey) {
+    const secretKey = process.env.SESSION_SECRET;
+    if (!secretKey) {
+      throw new Error("SESSION_SECRET environment variable is not set");
+    }
+    encodedKey = new TextEncoder().encode(secretKey);
+  }
+  return encodedKey;
 }
-const encodedKey = new TextEncoder().encode(secretKey);
 
 // Deliberately minimal: role/name are looked up fresh from the database on
 // every request (see lib/dal.ts) rather than trusted from the token, so an
@@ -23,17 +34,18 @@ export async function encrypt(payload: SessionPayload) {
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("7d")
-    .sign(encodedKey);
+    .sign(getEncodedKey());
 }
 
 export async function decrypt(session: string | undefined = "") {
+  const key = getEncodedKey(); // let a missing SESSION_SECRET throw loudly
   try {
-    const { payload } = await jwtVerify(session, encodedKey, {
+    const { payload } = await jwtVerify(session, key, {
       algorithms: ["HS256"],
     });
     return payload as SessionPayload & { iat: number; exp: number };
   } catch {
-    return null;
+    return null; // only malformed/expired/invalid tokens are swallowed here
   }
 }
 
