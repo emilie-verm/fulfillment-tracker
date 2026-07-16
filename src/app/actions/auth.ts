@@ -41,6 +41,10 @@ export async function login(
     return { error: "Invalid email or password." };
   }
 
+  if (!user.isActive) {
+    return { error: "This account has been deactivated. Contact an admin." };
+  }
+
   await createSession({ userId: user.id });
   redirect("/dashboard");
 }

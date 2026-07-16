@@ -81,6 +81,84 @@ export async function resetUserPassword(_prev: ActionResult, formData: FormData)
   return { success: "Password updated." };
 }
 
+const UpdateRoleSchema = z.object({
+  userId: z.string().min(1),
+  role: z.enum(ROLES),
+});
+
+export async function updateUserRole(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+  const admin = await getCurrentUser();
+  if (admin.role !== "ADMIN") {
+    return { error: "Only an admin can change roles." };
+  }
+
+  const parsed = UpdateRoleSchema.safeParse({
+    userId: formData.get("userId"),
+    role: formData.get("role"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
+  }
+
+  const target = await db.user.findUnique({ where: { id: parsed.data.userId } });
+  if (!target) return { error: "Not found." };
+
+  if (target.role === "ADMIN" && parsed.data.role !== "ADMIN") {
+    const otherActiveAdmins = await db.user.count({
+      where: { role: "ADMIN", isActive: true, id: { not: target.id } },
+    });
+    if (otherActiveAdmins === 0) {
+      return { error: "Can't change this — they're the last active admin." };
+    }
+  }
+
+  await db.user.update({ where: { id: target.id }, data: { role: parsed.data.role } });
+  revalidatePath("/users");
+  return { success: `Updated ${target.name}'s role.` };
+}
+
+const SetActiveSchema = z.object({
+  userId: z.string().min(1),
+  active: z.enum(["true", "false"]),
+});
+
+export async function setUserActive(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+  const admin = await getCurrentUser();
+  if (admin.role !== "ADMIN") {
+    return { error: "Only an admin can deactivate or reactivate accounts." };
+  }
+
+  const parsed = SetActiveSchema.safeParse({
+    userId: formData.get("userId"),
+    active: formData.get("active"),
+  });
+  if (!parsed.success) {
+    return { error: "Invalid input." };
+  }
+
+  const active = parsed.data.active === "true";
+  const target = await db.user.findUnique({ where: { id: parsed.data.userId } });
+  if (!target) return { error: "Not found." };
+
+  if (!active) {
+    if (target.id === admin.id) {
+      return { error: "You can't deactivate your own account." };
+    }
+    if (target.role === "ADMIN") {
+      const otherActiveAdmins = await db.user.count({
+        where: { role: "ADMIN", isActive: true, id: { not: target.id } },
+      });
+      if (otherActiveAdmins === 0) {
+        return { error: "Can't deactivate the last active admin." };
+      }
+    }
+  }
+
+  await db.user.update({ where: { id: target.id }, data: { isActive: active } });
+  revalidatePath("/users");
+  return { success: active ? `Reactivated ${target.name}.` : `Deactivated ${target.name}.` };
+}
+
 const ChangeOwnPasswordSchema = z.object({
   currentPassword: z.string().min(1, "Current password is required"),
   newPassword: z.string().min(8, "New password must be at least 8 characters"),

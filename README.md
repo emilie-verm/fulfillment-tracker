@@ -53,7 +53,7 @@ customer's been made whole, so it doesn't block or get blocked by the main resol
 |---|---|
 | **Fulfillment** (Camille) | Add/edit stock levels; create/edit any exception, including stage |
 | **Outreach** (Mary) | Create/edit any exception, including stage. Read-only on stock. |
-| **Admin** (Emilie) | Everything above, plus confirming final resolution, the full field/stage override panel, and managing user accounts |
+| **Admin** (Emilie) | Everything above, plus confirming final resolution, the full field/stage override panel, and managing user accounts (add, change role, reset password, deactivate/reactivate) |
 | **Viewer** | Read-only across the whole app — dashboard, exceptions, stock, archive. No create/edit buttons, forms, or stage controls anywhere. For sharing progress with leadership. |
 
 Every record shows a timestamp and who last touched it. Anything sitting in a non-final stage for more than
@@ -68,10 +68,18 @@ Notifications fire when responsibility hands off:
 - Customer response recorded, resolution is a reship → Fulfillment is notified it's ready to ship.
 - Customer response recorded, resolution is a refund/other → Admin is notified it's ready to confirm.
 - Marked fulfilled → Admin is notified it's ready to confirm.
-- New comment → everyone else is notified.
+- New comment → everyone else is notified, *unless* the comment @mentions someone (see below), in which
+  case only the mentioned person is notified instead of the blanket broadcast.
 
 Since there's no email/push service wired up, this only surfaces next time someone is in the app (page
 load/navigation) — not a phone alert while they're away from the computer.
+
+### @mentions in comments
+
+Type `@Name` in a comment (or click one of the quick-mention buttons under the box) to notify that
+person directly — matched case-insensitively against active users' first names. This is intentionally
+simple (no autocomplete, no @-triggered dropdown) since it's a handful of people with distinct first names,
+not a full mention system.
 
 ## Tech stack
 
@@ -102,8 +110,11 @@ Visit `http://localhost:3000/login`.
 environment variables (`SEED_CAMILLE_PASSWORD`, `SEED_MARY_PASSWORD`, `SEED_EMILIE_PASSWORD`) if set,
 otherwise a random password is generated and printed once to the terminal — write it down, it isn't stored
 anywhere and won't be shown again. Everyone should change their password from the **Account** page after
-first login. An admin can add more accounts (including a **Viewer** account for leadership) or reset
-passwords from the **Users** page in the app.
+first login. An admin can add more accounts (including a **Viewer** account for leadership), change
+someone's role, reset passwords, or deactivate/reactivate an account from the **Users** page in the app.
+Deactivating rather than deleting keeps the audit trail intact — a deactivated person's exceptions,
+comments, and stock checks stay attributed to them, they just can't log in. There's always a guard against
+deactivating yourself or removing the last admin's admin role.
 
 ## Deploying on Railway
 

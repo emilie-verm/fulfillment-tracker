@@ -21,6 +21,8 @@ export async function hasSessionCookie() {
 
 // Secure check: always re-reads the role from the database so permission
 // changes take effect immediately, and redirects unauthenticated requests.
+// A deactivated user is treated as unauthenticated — a deactivation mid-
+// session boots them at their very next request, not just their next login.
 export const getCurrentUser = cache(async (): Promise<CurrentUser> => {
   const cookie = await getSessionCookie();
   const session = await decrypt(cookie);
@@ -30,10 +32,10 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser> => {
 
   const user = await db.user.findUnique({
     where: { id: session.userId },
-    select: { id: true, name: true, email: true, role: true },
+    select: { id: true, name: true, email: true, role: true, isActive: true },
   });
 
-  if (!user) {
+  if (!user || !user.isActive) {
     redirect("/login");
   }
 
@@ -51,9 +53,9 @@ export const getCurrentUserOrNull = cache(
 
     const user = await db.user.findUnique({
       where: { id: session.userId },
-      select: { id: true, name: true, email: true, role: true },
+      select: { id: true, name: true, email: true, role: true, isActive: true },
     });
-    return user ?? null;
+    return user?.isActive ? user : null;
   }
 );
 

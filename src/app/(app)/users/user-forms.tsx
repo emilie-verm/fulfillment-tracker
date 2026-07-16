@@ -1,8 +1,9 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { createUser, resetUserPassword } from "@/app/actions/users";
+import { createUser, resetUserPassword, setUserActive, updateUserRole } from "@/app/actions/users";
 import { ROLE_LABELS } from "@/lib/constants";
+import type { Role } from "@prisma/client";
 
 export function CreateUserForm() {
   const [state, action, pending] = useActionState(createUser, undefined);
@@ -87,6 +88,65 @@ export function ResetPasswordForm({ userId, userName }: { userId: string; userNa
       </button>
       {state?.error && <span className="text-xs text-red-600">{state.error}</span>}
       {state?.success && <span className="text-xs text-emerald-600">{state.success}</span>}
+    </form>
+  );
+}
+
+export function RoleForm({ userId, currentRole }: { userId: string; currentRole: Role }) {
+  const [state, action, pending] = useActionState(updateUserRole, undefined);
+  return (
+    <form action={action} className="flex items-center gap-2">
+      <input type="hidden" name="userId" value={userId} />
+      <select
+        name="role"
+        defaultValue={currentRole}
+        className="rounded-md border border-zinc-300 px-2 py-1 text-sm"
+      >
+        {Object.entries(ROLE_LABELS).map(([value, label]) => (
+          <option key={value} value={value}>
+            {label}
+          </option>
+        ))}
+      </select>
+      <button
+        type="submit"
+        disabled={pending}
+        className="rounded-md bg-zinc-900 px-2 py-1 text-xs font-medium text-white hover:bg-zinc-700 disabled:opacity-50"
+      >
+        {pending ? "Saving…" : "Save"}
+      </button>
+      {state?.error && <span className="text-xs text-red-600">{state.error}</span>}
+    </form>
+  );
+}
+
+export function ActiveToggleForm({
+  userId,
+  isActive,
+  isSelf,
+}: {
+  userId: string;
+  isActive: boolean;
+  isSelf: boolean;
+}) {
+  const [state, action, pending] = useActionState(setUserActive, undefined);
+  return (
+    <form action={action} className="flex items-center gap-2">
+      <input type="hidden" name="userId" value={userId} />
+      <input type="hidden" name="active" value={isActive ? "false" : "true"} />
+      <button
+        type="submit"
+        disabled={pending || (isActive && isSelf)}
+        title={isActive && isSelf ? "You can't deactivate your own account" : undefined}
+        className={`rounded-md px-2 py-1 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-40 ${
+          isActive
+            ? "bg-red-50 text-red-700 hover:bg-red-100"
+            : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+        }`}
+      >
+        {pending ? "Saving…" : isActive ? "Deactivate" : "Reactivate"}
+      </button>
+      {state?.error && <span className="text-xs text-red-600">{state.error}</span>}
     </form>
   );
 }

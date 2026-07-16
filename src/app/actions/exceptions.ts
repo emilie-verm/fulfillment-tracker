@@ -10,7 +10,7 @@ import {
   canEditException,
   getCurrentUser,
 } from "@/lib/dal";
-import { notifyEveryoneExcept, notifyRoles } from "@/lib/notifications";
+import { notifyEveryoneExcept, notifyRoles, notifyUserIds, resolveMentions } from "@/lib/notifications";
 import type { ExceptionStage, ResolutionType } from "@prisma/client";
 
 const EXCEPTION_TYPES = [
@@ -544,10 +544,25 @@ export async function addComment(_prev: ActionResult, formData: FormData): Promi
     data: { exceptionId: id, authorId: user.id, body: parsed.data.body },
   });
 
-  await notifyEveryoneExcept(user.id, {
-    exceptionId: id,
-    message: `${user.name} commented on order #${exception.orderNumber}.`,
-  });
+  // @mentions notify specifically those people instead of everyone, so
+  // tagging someone reads as "I need you" rather than adding to the noise
+  // everyone else already gets from the blanket new-comment notification.
+  const mentioned = await resolveMentions(parsed.data.body);
+  if (mentioned.length > 0) {
+    await notifyUserIds(
+      mentioned.map((m) => m.id),
+      {
+        exceptionId: id,
+        message: `${user.name} mentioned you on order #${exception.orderNumber}: "${parsed.data.body.slice(0, 120)}"`,
+        excludeUserId: user.id,
+      }
+    );
+  } else {
+    await notifyEveryoneExcept(user.id, {
+      exceptionId: id,
+      message: `${user.name} commented on order #${exception.orderNumber}.`,
+    });
+  }
 
   revalidateAll(id);
   return undefined;

@@ -48,10 +48,17 @@ export default async function ExceptionDetailPage({
 
   if (!exception) notFound();
 
-  const siblings = await db.exception.findMany({
-    where: { orderNumber: exception.orderNumber, id: { not: exception.id } },
-    orderBy: { createdAt: "asc" },
-  });
+  const [siblings, teamMembers] = await Promise.all([
+    db.exception.findMany({
+      where: { orderNumber: exception.orderNumber, id: { not: exception.id } },
+      orderBy: { createdAt: "asc" },
+    }),
+    db.user.findMany({
+      where: { isActive: true, id: { not: user.id } },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
+  ]);
 
   // Anyone (Camille, Mary, Emilie) can create/edit exceptions and change the
   // stage directly — the guided buttons below just capture the right fields
@@ -243,8 +250,14 @@ export default async function ExceptionDetailPage({
         <h2 className="text-sm font-semibold text-zinc-900">Comments</h2>
         <p className="text-xs text-zinc-500">
           Tracking updates, replacement requests, or anything else worth recording for each other.
+          Type @Name to notify someone directly.
         </p>
-        <CommentsSection exceptionId={exception.id} comments={exception.comments} canComment={canEdit} />
+        <CommentsSection
+          exceptionId={exception.id}
+          comments={exception.comments}
+          canComment={canEdit}
+          teamMembers={teamMembers}
+        />
       </section>
 
       <section className="space-y-2">

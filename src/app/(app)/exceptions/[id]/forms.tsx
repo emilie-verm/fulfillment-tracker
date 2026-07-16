@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import {
   addComment,
   adminUpdateException,
@@ -397,17 +397,43 @@ export function StageEditorForm({ exception }: { exception: Exception }) {
 // ---- Comments (any of the 3 roles) --------------------------------------------
 
 type CommentWithAuthor = ExceptionComment & { author: Pick<User, "name"> };
+type TeamMember = Pick<User, "id" | "name">;
+
+// Renders @Name tokens as a highlighted span so a mention is visually
+// distinct from the rest of the comment. Deliberately simple regex match,
+// not tied to whether the name actually resolved to a real user.
+function renderWithMentions(body: string) {
+  const parts = body.split(/(@\w+)/g);
+  return parts.map((part, i) =>
+    part.startsWith("@") ? (
+      <span key={i} className="font-medium text-blue-700">
+        {part}
+      </span>
+    ) : (
+      <span key={i}>{part}</span>
+    )
+  );
+}
 
 export function CommentsSection({
   exceptionId,
   comments,
   canComment,
+  teamMembers,
 }: {
   exceptionId: string;
   comments: CommentWithAuthor[];
   canComment: boolean;
+  teamMembers: TeamMember[];
 }) {
   const [state, action, pending] = useActionState(addComment, undefined);
+  const [body, setBody] = useState("");
+
+  function insertMention(name: string) {
+    const firstName = name.split(/\s+/)[0];
+    setBody((current) => (current.endsWith(" ") || current === "" ? current : `${current} `) + `@${firstName} `);
+  }
+
   return (
     <div className="space-y-3">
       <ul className="space-y-3">
@@ -416,7 +442,7 @@ export function CommentsSection({
         )}
         {comments.map((comment) => (
           <li key={comment.id} className="rounded-md border border-zinc-200 bg-zinc-50 p-3">
-            <p className="whitespace-pre-wrap text-sm text-zinc-700">{comment.body}</p>
+            <p className="whitespace-pre-wrap text-sm text-zinc-700">{renderWithMentions(comment.body)}</p>
             <p className="mt-1 text-xs text-zinc-400">
               {comment.author.name} · {comment.createdAt.toLocaleString()}
             </p>
@@ -430,9 +456,26 @@ export function CommentsSection({
             name="body"
             required
             rows={2}
-            placeholder="Add a tracking update, replacement request, or anything else worth recording…"
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            placeholder="Add a tracking update, replacement request, or anything else worth recording… type @Name to notify someone"
             className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
           />
+          {teamMembers.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-xs text-zinc-400">Mention:</span>
+              {teamMembers.map((member) => (
+                <button
+                  key={member.id}
+                  type="button"
+                  onClick={() => insertMention(member.name)}
+                  className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600 hover:bg-zinc-200"
+                >
+                  @{member.name.split(/\s+/)[0]}
+                </button>
+              ))}
+            </div>
+          )}
           <ErrorText error={state?.error} />
           <SubmitButton pending={pending} variant="secondary">
             Add comment
