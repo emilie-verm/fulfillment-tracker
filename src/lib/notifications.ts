@@ -5,10 +5,14 @@ import type { Role } from "@prisma/client";
 // Creates one Notification row per matching user. In-app only — surfaced via
 // the bell icon in the nav, not email/SMS. excludeUserId keeps the person who
 // triggered the change from notifying themselves.
-export async function notifyRoles(
-  roles: Role[],
-  opts: { exceptionId?: string; message: string; excludeUserId?: string }
-) {
+type NotifyOpts = {
+  exceptionId?: string;
+  stockCheckId?: string;
+  message: string;
+  excludeUserId?: string;
+};
+
+export async function notifyRoles(roles: Role[], opts: NotifyOpts) {
   const users = await db.user.findMany({
     where: {
       role: { in: roles },
@@ -23,6 +27,7 @@ export async function notifyRoles(
     data: users.map((u) => ({
       userId: u.id,
       exceptionId: opts.exceptionId,
+      stockCheckId: opts.stockCheckId,
       message: opts.message,
     })),
   });
@@ -30,10 +35,7 @@ export async function notifyRoles(
 
 // Notify everyone except the actor — used when a new exception is logged, so
 // whichever side didn't create it knows to look at it.
-export async function notifyEveryoneExcept(
-  excludeUserId: string,
-  opts: { exceptionId?: string; message: string }
-) {
+export async function notifyEveryoneExcept(excludeUserId: string, opts: Omit<NotifyOpts, "excludeUserId">) {
   await notifyRoles(["FULFILLMENT", "OUTREACH", "ADMIN"], {
     ...opts,
     excludeUserId,
@@ -42,10 +44,7 @@ export async function notifyEveryoneExcept(
 
 // Notify exact users by ID — used for @mentions, where the person doing the
 // notifying should be excluded even if they mentioned themselves.
-export async function notifyUserIds(
-  userIds: string[],
-  opts: { exceptionId?: string; message: string; excludeUserId?: string }
-) {
+export async function notifyUserIds(userIds: string[], opts: NotifyOpts) {
   const ids = [...new Set(userIds)].filter((id) => id !== opts.excludeUserId);
   if (ids.length === 0) return;
 
@@ -59,6 +58,7 @@ export async function notifyUserIds(
     data: users.map((u) => ({
       userId: u.id,
       exceptionId: opts.exceptionId,
+      stockCheckId: opts.stockCheckId,
       message: opts.message,
     })),
   });

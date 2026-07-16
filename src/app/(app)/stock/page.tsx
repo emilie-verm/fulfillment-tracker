@@ -1,21 +1,34 @@
 import { db } from "@/lib/db";
-import { canEditStock, getCurrentUser } from "@/lib/dal";
+import { canCommentOnStock, canConfirmWebsiteUpdate, canEditStock, getCurrentUser } from "@/lib/dal";
 import { getCurrentStockLevels } from "@/lib/stock";
 import { StockStatusBadge } from "@/components/badges";
+import { STOCK_STATUS_LABELS } from "@/lib/constants";
 import AddStockForm from "./add-stock-form";
+import { StockCommentsSection, WebsiteUpdatedControl } from "./stock-forms";
+import type { StockStatus } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
+const STATUS_GROUPS: StockStatus[] = ["OUT_OF_STOCK", "LOW_STOCK", "HIGH_STOCK"];
+
 export default async function StockPage() {
   const user = await getCurrentUser();
-  const [levels, recentChecks] = await Promise.all([
+  const [levels, recentChecks, teamMembers] = await Promise.all([
     getCurrentStockLevels(),
     db.stockCheck.findMany({
       orderBy: { checkedAt: "desc" },
       take: 25,
       include: { checkedBy: { select: { name: true } } },
     }),
+    db.user.findMany({
+      where: { isActive: true, id: { not: user.id } },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
   ]);
+
+  const canConfirm = canConfirmWebsiteUpdate(user.role);
+  const canComment = canCommentOnStock(user.role);
 
   return (
     <div className="space-y-6">
@@ -30,38 +43,59 @@ export default async function StockPage() {
 
       {canEditStock(user.role) && <AddStockForm />}
 
-      <div>
+      <div className="space-y-6">
         <h2 className="text-sm font-semibold text-zinc-900">Current levels</h2>
-        <div className="mt-2 overflow-hidden rounded-lg border border-zinc-200 bg-white">
-          {levels.length === 0 ? (
-            <p className="p-6 text-center text-sm text-zinc-400">No stock checks logged yet.</p>
-          ) : (
-            <table className="w-full text-sm">
-              <thead className="border-b border-zinc-200 bg-zinc-50 text-left text-xs font-medium text-zinc-500">
-                <tr>
-                  <th className="px-3 py-2">Product</th>
-                  <th className="px-3 py-2">Status</th>
-                  <th className="px-3 py-2">Notes</th>
-                  <th className="px-3 py-2">Last checked</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-100">
-                {levels.map((level) => (
-                  <tr key={level.id}>
-                    <td className="px-3 py-2 font-medium text-zinc-900">{level.productName}</td>
-                    <td className="px-3 py-2">
-                      <StockStatusBadge status={level.status} />
-                    </td>
-                    <td className="px-3 py-2 text-zinc-600">{level.notes}</td>
-                    <td className="px-3 py-2 text-xs text-zinc-400">
-                      {level.checkedBy.name} · {level.checkedAt.toLocaleString()}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
+        {levels.length === 0 ? (
+          <p className="rounded-lg border border-zinc-200 bg-white p-6 text-center text-sm text-zinc-400">
+            No stock checks logged yet.
+          </p>
+        ) : (
+          STATUS_GROUPS.map((status) => {
+            const group = levels.filter((level) => level.status === status);
+            if (group.length === 0) return null;
+
+            return (
+              <div key={status}>
+                <h3 className="mb-2 flex items-center gap-2 text-sm font-medium text-zinc-700">
+                  {STOCK_STATUS_LABELS[status]}
+                  <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-500">
+                    {group.length}
+                  </span>
+                </h3>
+                <div className="divide-y divide-zinc-100 overflow-hidden rounded-lg border border-zinc-200 bg-white">
+                  {group.map((level) => (
+                    <div key={level.id} className="p-3">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className="font-medium text-zinc-900">{level.productName}</p>
+                          {level.notes && <p className="mt-0.5 text-sm text-zinc-600">{level.notes}</p>}
+                          <p className="mt-1 text-xs text-zinc-400">
+                            {level.checkedBy.name} · {level.checkedAt.toLocaleString()}
+                          </p>
+                        </div>
+                        <WebsiteUpdatedControl
+                          stockCheckId={level.id}
+                          confirmed={Boolean(level.websiteUpdatedAt)}
+                          confirmedByName={level.websiteUpdatedBy?.name}
+                          confirmedAt={level.websiteUpdatedAt ?? undefined}
+                          canConfirm={canConfirm}
+                        />
+                      </div>
+                      <div className="mt-2">
+                        <StockCommentsSection
+                          stockCheckId={level.id}
+                          comments={level.comments}
+                          canComment={canComment}
+                          teamMembers={teamMembers}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })
+        )}
       </div>
 
       <div>

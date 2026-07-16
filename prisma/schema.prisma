@@ -64,6 +64,8 @@ model User {
   createdAt    DateTime @default(now())
 
   stockChecks             StockCheck[]        @relation("StockCheckedBy")
+  stockChecksWebsiteBy    StockCheck[]        @relation("StockCheckWebsiteUpdatedBy")
+  stockCheckComments      StockCheckComment[] @relation("StockCheckCommentAuthor")
   exceptionsCreated       Exception[]         @relation("ExceptionCreatedBy")
   exceptionsUpdated       Exception[]         @relation("ExceptionLastUpdatedBy")
   exceptionsConfirmed     Exception[]         @relation("ExceptionConfirmedBy")
@@ -85,7 +87,32 @@ model StockCheck {
   checkedBy   User     @relation("StockCheckedBy", fields: [checkedById], references: [id])
   checkedAt   DateTime @default(now())
 
+  // Admin-only confirmation that the website (Shopify) was actually updated
+  // to match this stock report — separate from just logging it, so Camille
+  // can see it's been applied, not just recorded.
+  websiteUpdatedAt   DateTime?
+  websiteUpdatedById String?
+  websiteUpdatedBy   User?     @relation("StockCheckWebsiteUpdatedBy", fields: [websiteUpdatedById], references: [id])
+
+  comments      StockCheckComment[]
+  notifications Notification[]
+
   @@index([productName, checkedAt])
+}
+
+// Discussion thread per stock check entry — e.g. a restock request tied to
+// the specific OOS/low report it's about, separate from the structured
+// Notes field captured when the check was logged.
+model StockCheckComment {
+  id           String     @id @default(cuid())
+  stockCheckId String
+  stockCheck   StockCheck @relation(fields: [stockCheckId], references: [id], onDelete: Cascade)
+  authorId     String
+  author       User       @relation("StockCheckCommentAuthor", fields: [authorId], references: [id])
+  body         String
+  createdAt    DateTime   @default(now())
+
+  @@index([stockCheckId, createdAt])
 }
 
 model Exception {
@@ -177,14 +204,16 @@ model ExceptionComment {
 // off to another role (e.g. customer response recorded -> fulfillment is
 // notified it's ready to ship). Surfaced via a bell icon; no email/SMS.
 model Notification {
-  id          String     @id @default(cuid())
-  userId      String
-  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  exceptionId String?
-  exception   Exception? @relation(fields: [exceptionId], references: [id], onDelete: Cascade)
-  message     String
-  readAt      DateTime?
-  createdAt   DateTime   @default(now())
+  id           String      @id @default(cuid())
+  userId       String
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exceptionId  String?
+  exception    Exception?  @relation(fields: [exceptionId], references: [id], onDelete: Cascade)
+  stockCheckId String?
+  stockCheck   StockCheck? @relation(fields: [stockCheckId], references: [id], onDelete: Cascade)
+  message      String
+  readAt       DateTime?
+  createdAt    DateTime    @default(now())
 
   @@index([userId, readAt])
 }

@@ -3,6 +3,9 @@
 A small internal tool for the fulfillment and ecommerce team to track:
 
 - **Stock log** — Camille logs OOS / Low / High stock after physically checking the fulfillment room.
+  Current levels are grouped into three separate tables by status (Out of stock / Low stock / High stock)
+  rather than one flat list. Each entry has its own comment thread (e.g. a restock request) and an
+  admin-only confirmation that the website (Shopify) was actually updated to match, not just logged.
 - **Order exceptions + outreach** — one record per affected order line item. Camille and Mary can both log
   and edit exceptions (a reship/damaged/address issue Mary heard about from a customer, or an OOS item
   Camille found that needs outreach), so both sides stay in sync regardless of who created it.
@@ -68,8 +71,11 @@ Notifications fire when responsibility hands off:
 - Customer response recorded, resolution is a reship → Fulfillment is notified it's ready to ship.
 - Customer response recorded, resolution is a refund/other → Admin is notified it's ready to confirm.
 - Marked fulfilled → Admin is notified it's ready to confirm.
-- New comment → everyone else is notified, *unless* the comment @mentions someone (see below), in which
-  case only the mentioned person is notified instead of the blanket broadcast.
+- New comment on an exception → everyone else is notified, *unless* the comment @mentions someone (see
+  below), in which case only the mentioned person is notified instead of the blanket broadcast.
+- New comment on a stock check → only fires if it @mentions someone. Unlike exception comments there's no
+  blanket broadcast here, since a stock comment is usually a targeted restock ask, not a status update
+  everyone needs.
 
 Since there's no email/push service wired up, this only surfaces next time someone is in the app (page
 load/navigation) — not a phone alert while they're away from the computer.

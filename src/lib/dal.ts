@@ -68,6 +68,15 @@ export function requireRole(user: CurrentUser, ...roles: Role[]) {
 export const canEditStock = (role: Role) =>
   role === "FULFILLMENT" || role === "ADMIN";
 
+// Only Emilie confirms the website (Shopify) was actually updated to match
+// a stock report — separate from Camille/anyone logging the check itself.
+export const canConfirmWebsiteUpdate = (role: Role) => role === "ADMIN";
+
+// Same "not Viewer" rule as exception comments — collaborative, not tied to
+// who can edit the underlying stock check itself (Mary can comment on stock
+// even though she's read-only on the levels).
+export const canCommentOnStock = (role: Role) => role !== "VIEWER";
+
 // Camille, Mary, and Emilie can all create exceptions and edit any field on
 // one, including moving the stage directly — Mary logs reship/damaged/address
 // issues for Camille to act on, Camille logs OOS issues for Mary to reach out

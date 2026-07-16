@@ -8,7 +8,14 @@ import { db } from "@/lib/db";
 export async function getCurrentStockLevels() {
   const checks = await db.stockCheck.findMany({
     orderBy: { checkedAt: "desc" },
-    include: { checkedBy: { select: { name: true } } },
+    include: {
+      checkedBy: { select: { name: true } },
+      websiteUpdatedBy: { select: { name: true } },
+      comments: {
+        orderBy: { createdAt: "asc" },
+        include: { author: { select: { name: true } } },
+      },
+    },
   });
 
   const latestByProduct = new Map<string, (typeof checks)[number]>();
