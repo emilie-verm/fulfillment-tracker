@@ -3,11 +3,17 @@
 A small internal tool for the fulfillment and ecommerce team to track:
 
 - **Stock log** — Camille logs OOS / Low / High stock after physically checking the fulfillment room.
-- **Order exceptions + outreach** — one record per affected order line item, combining Camille's exception
-  log with Mary's customer outreach status so both sides stay in sync.
+- **Order exceptions + outreach** — one record per affected order line item. Camille and Mary can both log
+  and edit exceptions (a reship/damaged/address issue Mary heard about from a customer, or an OOS item
+  Camille found that needs outreach), so both sides stay in sync regardless of who created it.
 - **Reship/tracking** — tracking numbers for replacement shipments, tied back to the original order.
+- **Comments** — a per-exception discussion thread for tracking updates, replacement requests, or anything
+  else worth recording between Camille and Mary.
 - **Resolution confirmation** — a final admin sign-off, separate from "outreach sent" or "customer responded."
-- **Dashboard + archive** — what's open, what's waiting on whom, and a searchable history.
+- **In-app notifications** — a bell icon that alerts the right person when responsibility hands off (e.g.
+  Camille gets notified the moment Mary records a customer response that's ready to fulfill).
+- **Dashboard + archive** — what's open, what's waiting on whom, and a searchable history. Exceptions on
+  the same order are grouped together so multiple issues on one order don't read as separate orders.
 
 Everything is entered manually. This intentionally does **not** sync with Shopify or ShipStation — it's a
 log for issues that those platforms don't track (OOS substitutions, reships, customer choices), not a
@@ -22,20 +28,40 @@ LOGGED → OUTREACH_SENT → CUSTOMER_RESPONDED → FULFILLED → CONFIRMED_RESO
                       ↘ CLOSED_NO_RESPONSE (customer never replies)
 ```
 
+The guided buttons (mark outreach sent, record customer response, mark fulfilled, close no-response) capture
+the right fields for each transition, but any of the three roles can also jump the stage directly via the
+stage editor on an exception's detail page — useful when reality doesn't fit the guided flow (e.g. Mary
+already knows the customer's choice when she logs a reship exception). `CONFIRMED_RESOLVED` is the one
+exception: it's only reachable through the dedicated admin confirm action (or the full admin override panel),
+never the direct stage editor.
+
 If the customer chooses a refund instead of a replacement, `FULFILLED` is skipped — an admin can confirm
-resolution directly once the refund is issued. An admin can also override the stage directly to correct
-mistakes (see "Admin: edit any field" on an exception's detail page).
+resolution directly once the refund is issued.
 
 ## Roles
 
 | Role | Can do |
 |---|---|
-| **Fulfillment** (Camille) | Add/edit stock levels, log exceptions, edit order/product/type/notes, mark fulfilled with tracking info |
-| **Outreach** (Mary) | Add/edit outreach notes and status, record customer responses, close as "no response". Read-only on stock. |
-| **Admin** (Emilie) | Everything above, plus confirming final resolution, editing any field, and managing user accounts |
+| **Fulfillment** (Camille) | Add/edit stock levels; create/edit any exception, including stage |
+| **Outreach** (Mary) | Create/edit any exception, including stage. Read-only on stock. |
+| **Admin** (Emilie) | Everything above, plus confirming final resolution, the full field/stage override panel, and managing user accounts |
 
 Every record shows a timestamp and who last touched it. Anything sitting in a non-final stage for more than
 2 days gets a yellow aging flag; 5+ days turns red, so nothing silently falls through the cracks.
+
+## Notifications
+
+In-app only (no email/SMS) — a bell icon in the header shows unread count and links to `/notifications`.
+Notifications fire when responsibility hands off:
+
+- New exception logged → everyone else is notified.
+- Customer response recorded, resolution is a reship → Fulfillment is notified it's ready to ship.
+- Customer response recorded, resolution is a refund/other → Admin is notified it's ready to confirm.
+- Marked fulfilled → Admin is notified it's ready to confirm.
+- New comment → everyone else is notified.
+
+Since there's no email/push service wired up, this only surfaces next time someone is in the app (page
+load/navigation) — not a phone alert while they're away from the computer.
 
 ## Tech stack
 
@@ -86,12 +112,14 @@ intentionally manual-entry only.
 ## Project structure
 
 ```
-prisma/schema.prisma          Data model (Users, StockCheck, Exception, ExceptionEvent)
+prisma/schema.prisma          Data model (Users, StockCheck, Exception, ExceptionEvent,
+                               ExceptionComment, Notification)
 prisma/seed.ts                 Creates the 3 initial accounts
-src/lib/                       DB client, auth/session, permission helpers, shared constants
+src/lib/                       DB client, auth/session, permission helpers, notifications, shared constants
 src/proxy.ts                   Route protection (redirects unauthenticated requests to /login)
 src/app/actions/                Server Actions — all writes go through here with role checks
-src/app/(app)/                  Authenticated pages: dashboard, exceptions, stock, archive, users, account
+src/app/(app)/                  Authenticated pages: dashboard, exceptions, stock, archive, users,
+                                 account, notifications
 src/app/login/                  Login page
 src/app/api/export/             CSV export of the exceptions archive
 ```

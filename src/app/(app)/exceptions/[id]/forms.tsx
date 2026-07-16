@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import {
+  addComment,
   adminUpdateException,
   closeNoResponse,
   confirmResolved,
@@ -10,13 +11,15 @@ import {
   recordCustomerResponse,
   updateFulfillmentFields,
   updateOutreachNotes,
+  updateStage,
 } from "@/app/actions/exceptions";
 import {
+  DIRECT_EDITABLE_STAGE_LABELS,
   EXCEPTION_TYPE_LABELS,
   RESOLUTION_TYPE_LABELS,
   STAGE_LABELS,
 } from "@/lib/constants";
-import type { Exception } from "@prisma/client";
+import type { Exception, ExceptionComment, User } from "@prisma/client";
 
 function ErrorText({ error }: { error?: string }) {
   if (!error) return null;
@@ -348,5 +351,79 @@ export function AdminEditForm({ exception }: { exception: Exception }) {
         Save admin correction
       </SubmitButton>
     </form>
+  );
+}
+
+// ---- Direct stage editor (any of the 3 roles) --------------------------------
+
+export function StageEditorForm({ exception }: { exception: Exception }) {
+  const [state, action, pending] = useActionState(updateStage, undefined);
+  return (
+    <form action={action} className="flex flex-wrap items-end gap-3">
+      <input type="hidden" name="exceptionId" value={exception.id} />
+      <div>
+        <label className="block text-xs font-medium text-zinc-500">Stage</label>
+        <select
+          name="stage"
+          defaultValue={exception.stage}
+          className="mt-1 rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+        >
+          {Object.entries(DIRECT_EDITABLE_STAGE_LABELS).map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
+      </div>
+      <SubmitButton pending={pending} variant="secondary">
+        Update stage
+      </SubmitButton>
+      <ErrorText error={state?.error} />
+    </form>
+  );
+}
+
+// ---- Comments (any of the 3 roles) --------------------------------------------
+
+type CommentWithAuthor = ExceptionComment & { author: Pick<User, "name"> };
+
+export function CommentsSection({
+  exceptionId,
+  comments,
+}: {
+  exceptionId: string;
+  comments: CommentWithAuthor[];
+}) {
+  const [state, action, pending] = useActionState(addComment, undefined);
+  return (
+    <div className="space-y-3">
+      <ul className="space-y-3">
+        {comments.length === 0 && (
+          <li className="text-sm text-zinc-400">No comments yet.</li>
+        )}
+        {comments.map((comment) => (
+          <li key={comment.id} className="rounded-md border border-zinc-200 bg-zinc-50 p-3">
+            <p className="whitespace-pre-wrap text-sm text-zinc-700">{comment.body}</p>
+            <p className="mt-1 text-xs text-zinc-400">
+              {comment.author.name} · {comment.createdAt.toLocaleString()}
+            </p>
+          </li>
+        ))}
+      </ul>
+      <form action={action} className="space-y-2">
+        <input type="hidden" name="exceptionId" value={exceptionId} />
+        <textarea
+          name="body"
+          required
+          rows={2}
+          placeholder="Add a tracking update, replacement request, or anything else worth recording…"
+          className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+        />
+        <ErrorText error={state?.error} />
+        <SubmitButton pending={pending} variant="secondary">
+          Add comment
+        </SubmitButton>
+      </form>
+    </div>
   );
 }

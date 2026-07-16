@@ -11,8 +11,8 @@ datasource db {
 }
 
 enum Role {
-  FULFILLMENT // Camille: stock levels + order exceptions + tracking/fulfillment
-  OUTREACH // Mary: customer outreach notes/status, read-only stock
+  FULFILLMENT // Camille: stock levels, full exception access, tracking/fulfillment
+  OUTREACH // Mary: full exception access, read-only stock
   ADMIN // Emilie: full access, can confirm resolution
 }
 
@@ -27,6 +27,7 @@ enum ExceptionType {
   DAMAGED
   LOST
   WRONG_ITEM
+  ADDRESS_UPDATE
   OTHER
 }
 
@@ -56,11 +57,13 @@ model User {
   role         Role
   createdAt    DateTime @default(now())
 
-  stockChecks         StockCheck[]     @relation("StockCheckedBy")
-  exceptionsCreated   Exception[]      @relation("ExceptionCreatedBy")
-  exceptionsUpdated   Exception[]      @relation("ExceptionLastUpdatedBy")
-  exceptionsConfirmed Exception[]      @relation("ExceptionConfirmedBy")
-  exceptionEvents     ExceptionEvent[] @relation("ExceptionEventActor")
+  stockChecks         StockCheck[]        @relation("StockCheckedBy")
+  exceptionsCreated   Exception[]         @relation("ExceptionCreatedBy")
+  exceptionsUpdated   Exception[]         @relation("ExceptionLastUpdatedBy")
+  exceptionsConfirmed Exception[]         @relation("ExceptionConfirmedBy")
+  exceptionEvents     ExceptionEvent[]    @relation("ExceptionEventActor")
+  exceptionComments   ExceptionComment[]  @relation("ExceptionCommentAuthor")
+  notifications       Notification[]
 }
 
 // Append-only log of physical stock checks. "Current" status for a product
@@ -113,7 +116,9 @@ model Exception {
   lastUpdatedBy   User?    @relation("ExceptionLastUpdatedBy", fields: [lastUpdatedById], references: [id])
   updatedAt       DateTime @updatedAt
 
-  events ExceptionEvent[]
+  events        ExceptionEvent[]
+  comments      ExceptionComment[]
+  notifications Notification[]
 
   @@index([orderNumber])
   @@index([stage])
@@ -131,4 +136,35 @@ model ExceptionEvent {
   createdAt   DateTime  @default(now())
 
   @@index([exceptionId, createdAt])
+}
+
+// Free-form discussion thread per exception — tracking updates, replacement
+// requests, anything that doesn't fit a structured field. Separate from
+// ExceptionEvent, which is system-generated, not user-authored.
+model ExceptionComment {
+  id          String    @id @default(cuid())
+  exceptionId String
+  exception   Exception @relation(fields: [exceptionId], references: [id], onDelete: Cascade)
+  authorId    String
+  author      User      @relation("ExceptionCommentAuthor", fields: [authorId], references: [id])
+  body        String
+  createdAt   DateTime  @default(now())
+
+  @@index([exceptionId, createdAt])
+}
+
+// In-app notification, created when responsibility for an exception hands
+// off to another role (e.g. customer response recorded -> fulfillment is
+// notified it's ready to ship). Surfaced via a bell icon; no email/SMS.
+model Notification {
+  id          String     @id @default(cuid())
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exceptionId String?
+  exception   Exception? @relation(fields: [exceptionId], references: [id], onDelete: Cascade)
+  message     String
+  readAt      DateTime?
+  createdAt   DateTime   @default(now())
+
+  @@index([userId, readAt])
 }

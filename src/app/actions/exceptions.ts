@@ -7,13 +7,20 @@ import { db } from "@/lib/db";
 import {
   canConfirmResolved,
   canCreateException,
-  canEditFulfillmentFields,
-  canEditOutreachFields,
+  canEditException,
   getCurrentUser,
 } from "@/lib/dal";
-import type { ExceptionStage } from "@prisma/client";
+import { notifyEveryoneExcept, notifyRoles } from "@/lib/notifications";
+import type { ExceptionStage, ResolutionType } from "@prisma/client";
 
-const EXCEPTION_TYPES = ["OUT_OF_STOCK", "DAMAGED", "LOST", "WRONG_ITEM", "OTHER"] as const;
+const EXCEPTION_TYPES = [
+  "OUT_OF_STOCK",
+  "DAMAGED",
+  "LOST",
+  "WRONG_ITEM",
+  "ADDRESS_UPDATE",
+  "OTHER",
+] as const;
 const RESOLUTION_TYPES = ["REPLACEMENT_SHIPPED", "REFUNDED", "NO_RESPONSE", "OTHER"] as const;
 const STAGES = [
   "LOGGED",
@@ -23,6 +30,49 @@ const STAGES = [
   "CONFIRMED_RESOLVED",
   "CLOSED_NO_RESPONSE",
 ] as const;
+// Stages assignable via the direct stage editor available to all three
+// roles. CONFIRMED_RESOLVED is deliberately excluded — that one only happens
+// through confirmResolved (admin-only) or the admin override panel.
+const DIRECT_EDITABLE_STAGES = [
+  "LOGGED",
+  "OUTREACH_SENT",
+  "CUSTOMER_RESPONDED",
+  "FULFILLED",
+  "CLOSED_NO_RESPONSE",
+] as const;
+
+// Fires the right in-app notification for a stage transition, regardless of
+// which action/UI path caused it, so behavior stays consistent.
+async function notifyOnStageChange(
+  exceptionId: string,
+  orderNumber: string,
+  newStage: ExceptionStage,
+  resolutionType: ResolutionType | null,
+  actorId: string
+) {
+  if (newStage === "CUSTOMER_RESPONDED" && resolutionType === "REPLACEMENT_SHIPPED") {
+    await notifyRoles(["FULFILLMENT"], {
+      exceptionId,
+      message: `Order #${orderNumber} — customer responded, ready for you to fulfill.`,
+      excludeUserId: actorId,
+    });
+  } else if (
+    newStage === "CUSTOMER_RESPONDED" &&
+    (resolutionType === "REFUNDED" || resolutionType === "OTHER")
+  ) {
+    await notifyRoles(["ADMIN"], {
+      exceptionId,
+      message: `Order #${orderNumber} — customer responded, ready to confirm resolved.`,
+      excludeUserId: actorId,
+    });
+  } else if (newStage === "FULFILLED") {
+    await notifyRoles(["ADMIN"], {
+      exceptionId,
+      message: `Order #${orderNumber} — shipped, ready to confirm resolved.`,
+      excludeUserId: actorId,
+    });
+  }
+}
 
 function revalidateAll(id?: string) {
   revalidatePath("/dashboard");
@@ -100,11 +150,16 @@ export async function createException(
     `Logged exception: order ${data.orderNumber} — ${data.productName} (${data.exceptionType.replace(/_/g, " ").toLowerCase()})`
   );
 
+  await notifyEveryoneExcept(user.id, {
+    exceptionId: created.id,
+    message: `New exception logged for order #${data.orderNumber} — ${data.productName}.`,
+  });
+
   revalidateAll(created.id);
   redirect(`/exceptions/${created.id}`);
 }
 
-// ---- Fulfillment (Camille) fields -----------------------------------------
+// ---- Exception details (any of the 3 roles) --------------------------------
 
 const FulfillmentFieldsSchema = z.object({
   orderNumber: z.string().trim().min(1),
@@ -116,7 +171,7 @@ const FulfillmentFieldsSchema = z.object({
 export async function updateFulfillmentFields(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
   const id = requireExceptionId(formData);
   const user = await getCurrentUser();
-  if (!canEditFulfillmentFields(user.role)) {
+  if (!canEditException(user.role)) {
     return { error: "You don't have permission to edit these fields." };
   }
 
@@ -140,12 +195,12 @@ export async function updateFulfillmentFields(_prev: ActionResult, formData: For
   return undefined;
 }
 
-// ---- Outreach (Mary) status transitions -----------------------------------
+// ---- Outreach status transitions --------------------------------------------
 
 export async function markOutreachSent(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
   const id = requireExceptionId(formData);
   const user = await getCurrentUser();
-  if (!canEditOutreachFields(user.role)) {
+  if (!canEditException(user.role)) {
     return { error: "You don't have permission to update outreach status." };
   }
 
@@ -171,7 +226,7 @@ const OutreachNotesSchema = z.object({
 export async function updateOutreachNotes(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
   const id = requireExceptionId(formData);
   const user = await getCurrentUser();
-  if (!canEditOutreachFields(user.role)) {
+  if (!canEditException(user.role)) {
     return { error: "You don't have permission to edit outreach notes." };
   }
   const parsed = OutreachNotesSchema.safeParse({
@@ -196,7 +251,7 @@ const RecordResponseSchema = z.object({
 export async function recordCustomerResponse(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
   const id = requireExceptionId(formData);
   const user = await getCurrentUser();
-  if (!canEditOutreachFields(user.role)) {
+  if (!canEditException(user.role)) {
     return { error: "You don't have permission to record customer responses." };
   }
 
@@ -229,6 +284,7 @@ export async function recordCustomerResponse(_prev: ActionResult, formData: Form
     user.id,
     `Recorded customer response: ${parsed.data.customerChoice}`
   );
+  await notifyOnStageChange(id, exception.orderNumber, "CUSTOMER_RESPONDED", parsed.data.resolutionType, user.id);
   revalidateAll(id);
   return undefined;
 }
@@ -236,7 +292,7 @@ export async function recordCustomerResponse(_prev: ActionResult, formData: Form
 export async function closeNoResponse(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
   const id = requireExceptionId(formData);
   const user = await getCurrentUser();
-  if (!canEditOutreachFields(user.role)) {
+  if (!canEditException(user.role)) {
     return { error: "You don't have permission to close this exception." };
   }
   const exception = await db.exception.findUnique({ where: { id } });
@@ -269,7 +325,7 @@ const MarkFulfilledSchema = z.object({
 export async function markFulfilled(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
   const id = requireExceptionId(formData);
   const user = await getCurrentUser();
-  if (!canEditFulfillmentFields(user.role)) {
+  if (!canEditException(user.role)) {
     return { error: "You don't have permission to mark this fulfilled." };
   }
 
@@ -306,6 +362,83 @@ export async function markFulfilled(_prev: ActionResult, formData: FormData): Pr
     user.id,
     `Marked fulfilled — shipped with tracking ${parsed.data.trackingNumber}${parsed.data.carrier ? ` (${parsed.data.carrier})` : ""}`
   );
+  await notifyOnStageChange(id, exception.orderNumber, "FULFILLED", exception.resolutionType, user.id);
+  revalidateAll(id);
+  return undefined;
+}
+
+// ---- Direct stage editor (any of the 3 roles, except into CONFIRMED_RESOLVED) --
+
+const UpdateStageSchema = z.object({
+  stage: z.enum(DIRECT_EDITABLE_STAGES),
+});
+
+export async function updateStage(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+  const id = requireExceptionId(formData);
+  const user = await getCurrentUser();
+  if (!canEditException(user.role)) {
+    return { error: "You don't have permission to change this." };
+  }
+
+  const exception = await db.exception.findUnique({ where: { id } });
+  if (!exception) return { error: "Not found." };
+  if (exception.stage === "CONFIRMED_RESOLVED") {
+    return { error: "Already confirmed resolved — use the admin panel to reopen it." };
+  }
+
+  const parsed = UpdateStageSchema.safeParse({ stage: formData.get("stage") });
+  if (!parsed.success) {
+    return { error: "Invalid stage." };
+  }
+
+  if (parsed.data.stage === exception.stage) {
+    return undefined;
+  }
+
+  await db.exception.update({
+    where: { id },
+    data: { stage: parsed.data.stage, stageChangedAt: new Date(), lastUpdatedById: user.id },
+  });
+  await logEvent(
+    id,
+    user.id,
+    `Stage changed directly from "${exception.stage}" to "${parsed.data.stage}"`
+  );
+  await notifyOnStageChange(id, exception.orderNumber, parsed.data.stage, exception.resolutionType, user.id);
+  revalidateAll(id);
+  return undefined;
+}
+
+// ---- Comments (any of the 3 roles) ------------------------------------------
+
+const AddCommentSchema = z.object({
+  body: z.string().trim().min(1, "Comment can't be empty"),
+});
+
+export async function addComment(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+  const id = requireExceptionId(formData);
+  const user = await getCurrentUser();
+  if (!canEditException(user.role)) {
+    return { error: "You don't have permission to comment on this." };
+  }
+
+  const exception = await db.exception.findUnique({ where: { id } });
+  if (!exception) return { error: "Not found." };
+
+  const parsed = AddCommentSchema.safeParse({ body: formData.get("body") });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
+  }
+
+  await db.exceptionComment.create({
+    data: { exceptionId: id, authorId: user.id, body: parsed.data.body },
+  });
+
+  await notifyEveryoneExcept(user.id, {
+    exceptionId: id,
+    message: `${user.name} commented on order #${exception.orderNumber}.`,
+  });
+
   revalidateAll(id);
   return undefined;
 }
@@ -419,6 +552,10 @@ export async function adminUpdateException(_prev: ActionResult, formData: FormDa
       ? `Admin correction — stage changed from "${existing.stage}" to "${newStage}"`
       : "Admin correction — edited exception fields"
   );
+  if (stageChanged) {
+    const finalResolutionType = parsed.data.resolutionType ? parsed.data.resolutionType : null;
+    await notifyOnStageChange(id, parsed.data.orderNumber, newStage, finalResolutionType, user.id);
+  }
   revalidateAll(id);
   return undefined;
 }

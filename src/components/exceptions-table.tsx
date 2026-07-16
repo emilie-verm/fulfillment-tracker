@@ -2,6 +2,26 @@ import Link from "next/link";
 import type { Exception } from "@prisma/client";
 import { AgingFlag, ExceptionTypeBadge, StageBadge } from "@/components/badges";
 
+// Groups exceptions by order number so multiple exceptions on the same order
+// render as one cluster instead of looking like unrelated rows — otherwise
+// it's easy to mistake them for separate orders/customers (e.g. Mary sending
+// two separate outreach emails for what's really one order with two OOS items).
+function groupByOrderNumber(exceptions: Exception[]) {
+  const order: string[] = [];
+  const groups = new Map<string, Exception[]>();
+  for (const exception of exceptions) {
+    if (!groups.has(exception.orderNumber)) {
+      groups.set(exception.orderNumber, []);
+      order.push(exception.orderNumber);
+    }
+    groups.get(exception.orderNumber)!.push(exception);
+  }
+  return order.map((orderNumber) => ({
+    orderNumber,
+    items: groups.get(orderNumber)!,
+  }));
+}
+
 export function ExceptionsTable({ exceptions }: { exceptions: Exception[] }) {
   if (exceptions.length === 0) {
     return (
@@ -11,44 +31,43 @@ export function ExceptionsTable({ exceptions }: { exceptions: Exception[] }) {
     );
   }
 
+  const groups = groupByOrderNumber(exceptions);
+
   return (
-    <div className="overflow-hidden rounded-lg border border-zinc-200 bg-white">
-      <table className="w-full text-sm">
-        <thead className="border-b border-zinc-200 bg-zinc-50 text-left text-xs font-medium text-zinc-500">
-          <tr>
-            <th className="px-3 py-2">Order</th>
-            <th className="px-3 py-2">Product</th>
-            <th className="px-3 py-2">Type</th>
-            <th className="px-3 py-2">Stage</th>
-            <th className="px-3 py-2">Aging</th>
-            <th className="px-3 py-2">Logged</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-zinc-100">
-          {exceptions.map((exception) => (
-            <tr key={exception.id} className="hover:bg-zinc-50">
-              <td className="px-3 py-2">
-                <Link href={`/exceptions/${exception.id}`} className="font-medium text-zinc-900 hover:underline">
-                  #{exception.orderNumber}
-                </Link>
-              </td>
-              <td className="px-3 py-2 text-zinc-700">{exception.productName}</td>
-              <td className="px-3 py-2">
-                <ExceptionTypeBadge type={exception.exceptionType} />
-              </td>
-              <td className="px-3 py-2">
-                <StageBadge stage={exception.stage} />
-              </td>
-              <td className="px-3 py-2">
-                <AgingFlag stageChangedAt={exception.stageChangedAt} stage={exception.stage} />
-              </td>
-              <td className="px-3 py-2 text-zinc-500">
-                {exception.createdAt.toLocaleDateString()}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="space-y-3">
+      {groups.map((group) => (
+        <div key={group.orderNumber} className="overflow-hidden rounded-lg border border-zinc-200 bg-white">
+          <div className="flex items-center justify-between gap-2 border-b border-zinc-200 bg-zinc-50 px-3 py-2">
+            <span className="text-sm font-semibold text-zinc-900">Order #{group.orderNumber}</span>
+            {group.items.length > 1 && (
+              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 ring-1 ring-inset ring-amber-600/20">
+                {group.items.length} exceptions on this order
+              </span>
+            )}
+          </div>
+          <div className="divide-y divide-zinc-100">
+            {group.items.map((exception) => (
+              <Link
+                key={exception.id}
+                href={`/exceptions/${exception.id}`}
+                className="flex flex-wrap items-center justify-between gap-2 p-3 text-sm hover:bg-zinc-50"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-zinc-700">{exception.productName}</span>
+                  <ExceptionTypeBadge type={exception.exceptionType} />
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-zinc-400">
+                    {exception.createdAt.toLocaleDateString()}
+                  </span>
+                  <AgingFlag stageChangedAt={exception.stageChangedAt} stage={exception.stage} />
+                  <StageBadge stage={exception.stage} />
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

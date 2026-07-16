@@ -29,8 +29,15 @@ export const EXCEPTION_TYPE_LABELS: Record<ExceptionType, string> = {
   DAMAGED: "Damaged",
   LOST: "Lost in transit",
   WRONG_ITEM: "Wrong item shipped",
+  ADDRESS_UPDATE: "Address update",
   OTHER: "Other",
 };
+
+// Stages assignable via the direct stage editor (excludes CONFIRMED_RESOLVED,
+// which only happens through the dedicated admin confirm action).
+export const DIRECT_EDITABLE_STAGE_LABELS = Object.fromEntries(
+  Object.entries(STAGE_LABELS).filter(([stage]) => stage !== "CONFIRMED_RESOLVED")
+) as Partial<Record<ExceptionStage, string>>;
 
 export const RESOLUTION_TYPE_LABELS: Record<ResolutionType, string> = {
   REPLACEMENT_SHIPPED: "Replacement shipped",

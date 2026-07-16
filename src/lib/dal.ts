@@ -66,13 +66,13 @@ export function requireRole(user: CurrentUser, ...roles: Role[]) {
 export const canEditStock = (role: Role) =>
   role === "FULFILLMENT" || role === "ADMIN";
 
-export const canEditFulfillmentFields = (role: Role) =>
-  role === "FULFILLMENT" || role === "ADMIN";
+// Camille, Mary, and Emilie can all create exceptions and edit any field on
+// one, including moving the stage directly — Mary logs reship/damaged/address
+// issues for Camille to act on, Camille logs OOS issues for Mary to reach out
+// on, so the split by role stopped making sense. "Confirmed resolved" is the
+// one action that stays admin-only (see canConfirmResolved).
+export const canEditException = (_role: Role) => true; // eslint-disable-line @typescript-eslint/no-unused-vars
 
-export const canEditOutreachFields = (role: Role) =>
-  role === "OUTREACH" || role === "ADMIN";
+export const canCreateException = canEditException;
 
 export const canConfirmResolved = (role: Role) => role === "ADMIN";
-
-export const canCreateException = (role: Role) =>
-  role === "FULFILLMENT" || role === "ADMIN";

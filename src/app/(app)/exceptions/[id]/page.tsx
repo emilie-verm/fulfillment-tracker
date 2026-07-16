@@ -1,18 +1,20 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
-import { canEditFulfillmentFields, canEditOutreachFields, getCurrentUser } from "@/lib/dal";
+import { getCurrentUser } from "@/lib/dal";
 import { AgingFlag, ExceptionTypeBadge, StageBadge } from "@/components/badges";
 import { RESOLUTION_TYPE_LABELS } from "@/lib/constants";
 import {
   AdminEditForm,
   CloseNoResponseForm,
+  CommentsSection,
   ConfirmResolvedForm,
   FulfillmentFieldsForm,
   MarkFulfilledForm,
   MarkOutreachSentForm,
   OutreachNotesForm,
   RecordResponseForm,
+  StageEditorForm,
 } from "./forms";
 
 export const dynamic = "force-dynamic";
@@ -35,6 +37,10 @@ export default async function ExceptionDetailPage({
         orderBy: { createdAt: "desc" },
         include: { actor: { select: { name: true } } },
       },
+      comments: {
+        orderBy: { createdAt: "asc" },
+        include: { author: { select: { name: true } } },
+      },
     },
   });
 
@@ -45,13 +51,12 @@ export default async function ExceptionDetailPage({
     orderBy: { createdAt: "asc" },
   });
 
-  const isFulfillment = canEditFulfillmentFields(user.role);
-  const isOutreach = canEditOutreachFields(user.role);
-
-  const canRecordResponse =
-    isOutreach && (exception.stage === "LOGGED" || exception.stage === "OUTREACH_SENT");
+  // Anyone (Camille, Mary, Emilie) can create/edit exceptions and change the
+  // stage directly — the guided buttons below just capture the right fields
+  // for the common transitions; eligibility depends on the current stage,
+  // not on who's logged in.
+  const canRecordResponse = exception.stage === "LOGGED" || exception.stage === "OUTREACH_SENT";
   const canMarkFulfilled =
-    isFulfillment &&
     exception.stage === "CUSTOMER_RESPONDED" &&
     (exception.resolutionType === "REPLACEMENT_SHIPPED" || user.role === "ADMIN");
   const canConfirm =
@@ -77,6 +82,11 @@ export default async function ExceptionDetailPage({
             </div>
           </div>
         </div>
+        {exception.stage !== "CONFIRMED_RESOLVED" && (
+          <div className="mt-3 rounded-lg border border-zinc-200 bg-white p-3">
+            <StageEditorForm exception={exception} />
+          </div>
+        )}
       </div>
 
       {siblings.length > 0 && (
@@ -99,14 +109,8 @@ export default async function ExceptionDetailPage({
 
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="space-y-3 rounded-lg border border-zinc-200 bg-white p-4">
-          <h2 className="text-sm font-semibold text-zinc-900">Fulfillment (Camille)</h2>
-          {isFulfillment ? (
-            <FulfillmentFieldsForm exception={exception} />
-          ) : (
-            exception.fulfillmentNotes && (
-              <p className="text-sm text-zinc-600">{exception.fulfillmentNotes}</p>
-            )
-          )}
+          <h2 className="text-sm font-semibold text-zinc-900">Fulfillment details</h2>
+          <FulfillmentFieldsForm exception={exception} />
           <div className="border-t border-zinc-100 pt-3">
             {canMarkFulfilled ? (
               <MarkFulfilledForm exceptionId={exception.id} />
@@ -131,16 +135,10 @@ export default async function ExceptionDetailPage({
         </section>
 
         <section className="space-y-3 rounded-lg border border-zinc-200 bg-white p-4">
-          <h2 className="text-sm font-semibold text-zinc-900">Customer outreach (Mary)</h2>
-          {isOutreach ? (
-            <OutreachNotesForm exception={exception} />
-          ) : (
-            exception.outreachNotes && <p className="text-sm text-zinc-600">{exception.outreachNotes}</p>
-          )}
+          <h2 className="text-sm font-semibold text-zinc-900">Customer outreach</h2>
+          <OutreachNotesForm exception={exception} />
           <div className="space-y-3 border-t border-zinc-100 pt-3">
-            {isOutreach && exception.stage === "LOGGED" && (
-              <MarkOutreachSentForm exceptionId={exception.id} />
-            )}
+            {exception.stage === "LOGGED" && <MarkOutreachSentForm exceptionId={exception.id} />}
             {canRecordResponse && <RecordResponseForm exceptionId={exception.id} />}
             {exception.customerChoice && (
               <p className="text-sm text-zinc-600">
@@ -185,6 +183,14 @@ export default async function ExceptionDetailPage({
           </div>
         </details>
       )}
+
+      <section className="space-y-2">
+        <h2 className="text-sm font-semibold text-zinc-900">Comments</h2>
+        <p className="text-xs text-zinc-500">
+          Tracking updates, replacement requests, or anything else worth recording for each other.
+        </p>
+        <CommentsSection exceptionId={exception.id} comments={exception.comments} />
+      </section>
 
       <section className="space-y-2">
         <h2 className="text-sm font-semibold text-zinc-900">Activity history</h2>

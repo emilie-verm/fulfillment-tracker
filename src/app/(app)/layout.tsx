@@ -1,7 +1,12 @@
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/dal";
+import { db } from "@/lib/db";
 import { ROLE_LABELS } from "@/lib/constants";
 import { logout } from "@/app/actions/auth";
+
+// Forces this whole segment to render fresh on every navigation (not just
+// hard reloads) so the unread notification count never goes stale.
+export const dynamic = "force-dynamic";
 
 export default async function AppLayout({
   children,
@@ -9,6 +14,9 @@ export default async function AppLayout({
   children: React.ReactNode;
 }) {
   const user = await getCurrentUser();
+  const unreadCount = await db.notification.count({
+    where: { userId: user.id, readAt: null },
+  });
 
   const navItems = [
     { href: "/dashboard", label: "Dashboard" },
@@ -42,6 +50,21 @@ export default async function AppLayout({
             </nav>
           </div>
           <div className="flex items-center gap-3">
+            <Link
+              href="/notifications"
+              className="relative text-zinc-500 hover:text-zinc-900"
+              aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`}
+            >
+              <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
+                <path d="M12 2a6 6 0 0 0-6 6v3.09c0 .74-.29 1.45-.8 1.98L4 14.5c-1 1-.3 2.5 1 2.5h14c1.3 0 2-1.5 1-2.5l-1.2-1.43a2.83 2.83 0 0 1-.8-1.98V8a6 6 0 0 0-6-6Z" />
+                <path d="M9.5 19a2.5 2.5 0 0 0 5 0Z" />
+              </svg>
+              {unreadCount > 0 && (
+                <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-medium text-white">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
+            </Link>
             <Link href="/account" className="text-sm text-zinc-500 hover:text-zinc-900">
               {user.name}{" "}
               <span className="text-zinc-400">
