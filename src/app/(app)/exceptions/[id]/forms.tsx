@@ -6,9 +6,11 @@ import {
   adminUpdateException,
   closeNoResponse,
   confirmResolved,
+  markAddressUpdated,
   markFulfilled,
   markOutreachSent,
   recordCustomerResponse,
+  updateCarrierClaim,
   updateFulfillmentFields,
   updateOutreachNotes,
   updateStage,
@@ -305,6 +307,15 @@ export function AdminEditForm({ exception }: { exception: Exception }) {
           className="mt-1 w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
         />
       </div>
+      <div>
+        <label className="block text-xs font-medium text-zinc-500">Corrected address (address-update exceptions)</label>
+        <textarea
+          name="correctedAddress"
+          defaultValue={exception.correctedAddress ?? ""}
+          rows={2}
+          className="mt-1 w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+        />
+      </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-medium text-zinc-500">Customer choice</label>
@@ -425,5 +436,54 @@ export function CommentsSection({
         </SubmitButton>
       </form>
     </div>
+  );
+}
+
+// ---- Address update (any of the 3 roles) --------------------------------------
+
+export function AddressUpdateForm({ exceptionId }: { exceptionId: string }) {
+  const [state, action, pending] = useActionState(markAddressUpdated, undefined);
+  return (
+    <form action={action} className="space-y-2">
+      <input type="hidden" name="exceptionId" value={exceptionId} />
+      <label className="block text-xs font-medium text-zinc-600">Corrected address</label>
+      <textarea
+        name="correctedAddress"
+        required
+        rows={3}
+        placeholder="Full corrected shipping address from the customer"
+        className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+      />
+      <ErrorText error={state?.error} />
+      <SubmitButton pending={pending}>Mark address updated in ShipStation</SubmitButton>
+    </form>
+  );
+}
+
+// ---- Carrier claim (any of the 3 roles, DAMAGED/LOST only) ---------------------
+
+export function CarrierClaimForm({ exception }: { exception: Exception }) {
+  const [state, action, pending] = useActionState(updateCarrierClaim, undefined);
+  const filed = Boolean(exception.carrierClaimFiledAt);
+  return (
+    <form action={action} className="space-y-2 rounded-md border border-zinc-200 bg-zinc-50 p-3">
+      <input type="hidden" name="exceptionId" value={exception.id} />
+      <label className="flex items-center gap-2 text-sm text-zinc-700">
+        <input type="checkbox" name="filed" defaultChecked={filed} className="rounded border-zinc-300" />
+        Claim filed with carrier (UPS/FedEx/etc.)
+      </label>
+      <div>
+        <label className="block text-xs font-medium text-zinc-500">Claim reference # (optional)</label>
+        <input
+          name="reference"
+          defaultValue={exception.carrierClaimReference ?? ""}
+          className="mt-1 w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+        />
+      </div>
+      <ErrorText error={state?.error} />
+      <SubmitButton pending={pending} variant="secondary">
+        Save claim status
+      </SubmitButton>
+    </form>
   );
 }

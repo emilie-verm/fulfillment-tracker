@@ -46,6 +46,7 @@ enum ResolutionType {
   REPLACEMENT_SHIPPED
   REFUNDED
   NO_RESPONSE
+  ADDRESS_UPDATED
   OTHER
 }
 
@@ -57,13 +58,14 @@ model User {
   role         Role
   createdAt    DateTime @default(now())
 
-  stockChecks         StockCheck[]        @relation("StockCheckedBy")
-  exceptionsCreated   Exception[]         @relation("ExceptionCreatedBy")
-  exceptionsUpdated   Exception[]         @relation("ExceptionLastUpdatedBy")
-  exceptionsConfirmed Exception[]         @relation("ExceptionConfirmedBy")
-  exceptionEvents     ExceptionEvent[]    @relation("ExceptionEventActor")
-  exceptionComments   ExceptionComment[]  @relation("ExceptionCommentAuthor")
-  notifications       Notification[]
+  stockChecks             StockCheck[]        @relation("StockCheckedBy")
+  exceptionsCreated       Exception[]         @relation("ExceptionCreatedBy")
+  exceptionsUpdated       Exception[]         @relation("ExceptionLastUpdatedBy")
+  exceptionsConfirmed     Exception[]         @relation("ExceptionConfirmedBy")
+  exceptionsClaimFiledBy  Exception[]         @relation("ExceptionCarrierClaimFiledBy")
+  exceptionEvents         ExceptionEvent[]    @relation("ExceptionEventActor")
+  exceptionComments       ExceptionComment[]  @relation("ExceptionCommentAuthor")
+  notifications           Notification[]
 }
 
 // Append-only log of physical stock checks. "Current" status for a product
@@ -99,6 +101,19 @@ model Exception {
   // Mary's fields
   outreachNotes  String?
   customerChoice String?
+
+  // ADDRESS_UPDATE exceptions skip outreach/customer-response entirely —
+  // the corrected address is captured directly, then this moves straight
+  // from LOGGED to FULFILLED once someone's applied it in ShipStation.
+  correctedAddress String?
+
+  // Independent of the main resolution flow — DAMAGED/LOST exceptions may
+  // also need a claim filed with the carrier (UPS/FedEx) to recover cost,
+  // which has nothing to do with whether the customer's been made whole.
+  carrierClaimFiledAt   DateTime?
+  carrierClaimFiledById String?
+  carrierClaimFiledBy   User?     @relation("ExceptionCarrierClaimFiledBy", fields: [carrierClaimFiledById], references: [id])
+  carrierClaimReference String?
 
   // Set once the exception reaches a terminal stage
   resolutionType ResolutionType?

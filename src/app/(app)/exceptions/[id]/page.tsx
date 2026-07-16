@@ -3,9 +3,11 @@ import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/dal";
 import { AgingFlag, ExceptionTypeBadge, StageBadge } from "@/components/badges";
-import { RESOLUTION_TYPE_LABELS } from "@/lib/constants";
+import { RESOLUTION_TYPE_LABELS, isAddressUpdateType, showsCarrierClaim } from "@/lib/constants";
 import {
+  AddressUpdateForm,
   AdminEditForm,
+  CarrierClaimForm,
   CloseNoResponseForm,
   CommentsSection,
   ConfirmResolvedForm,
@@ -55,10 +57,14 @@ export default async function ExceptionDetailPage({
   // stage directly — the guided buttons below just capture the right fields
   // for the common transitions; eligibility depends on the current stage,
   // not on who's logged in.
-  const canRecordResponse = exception.stage === "LOGGED" || exception.stage === "OUTREACH_SENT";
+  const isAddressUpdate = isAddressUpdateType(exception.exceptionType);
+  const canRecordResponse =
+    !isAddressUpdate && (exception.stage === "LOGGED" || exception.stage === "OUTREACH_SENT");
   const canMarkFulfilled =
+    !isAddressUpdate &&
     exception.stage === "CUSTOMER_RESPONDED" &&
     (exception.resolutionType === "REPLACEMENT_SHIPPED" || user.role === "ADMIN");
+  const canMarkAddressUpdated = isAddressUpdate && exception.stage === "LOGGED";
   const canConfirm =
     exception.stage === "FULFILLED" ||
     (exception.stage === "CUSTOMER_RESPONDED" &&
@@ -112,7 +118,16 @@ export default async function ExceptionDetailPage({
           <h2 className="text-sm font-semibold text-zinc-900">Fulfillment details</h2>
           <FulfillmentFieldsForm exception={exception} />
           <div className="border-t border-zinc-100 pt-3">
-            {canMarkFulfilled ? (
+            {isAddressUpdate ? (
+              canMarkAddressUpdated ? (
+                <AddressUpdateForm exceptionId={exception.id} />
+              ) : exception.correctedAddress ? (
+                <div className="text-sm text-zinc-600">
+                  <p className="font-medium">Corrected address:</p>
+                  <p className="whitespace-pre-wrap">{exception.correctedAddress}</p>
+                </div>
+              ) : null
+            ) : canMarkFulfilled ? (
               <MarkFulfilledForm exceptionId={exception.id} />
             ) : exception.trackingNumber ? (
               <div className="text-sm text-zinc-600">
@@ -136,22 +151,42 @@ export default async function ExceptionDetailPage({
 
         <section className="space-y-3 rounded-lg border border-zinc-200 bg-white p-4">
           <h2 className="text-sm font-semibold text-zinc-900">Customer outreach</h2>
-          <OutreachNotesForm exception={exception} />
-          <div className="space-y-3 border-t border-zinc-100 pt-3">
-            {exception.stage === "LOGGED" && <MarkOutreachSentForm exceptionId={exception.id} />}
-            {canRecordResponse && <RecordResponseForm exceptionId={exception.id} />}
-            {exception.customerChoice && (
-              <p className="text-sm text-zinc-600">
-                <span className="font-medium">Customer chose:</span> {exception.customerChoice}
-                {exception.resolutionType && (
-                  <span className="text-zinc-400"> ({RESOLUTION_TYPE_LABELS[exception.resolutionType]})</span>
+          {isAddressUpdate ? (
+            <p className="text-sm text-zinc-400">
+              Not needed for address updates — the corrected address comes straight from the customer
+              when this is logged.
+            </p>
+          ) : (
+            <>
+              <OutreachNotesForm exception={exception} />
+              <div className="space-y-3 border-t border-zinc-100 pt-3">
+                {exception.stage === "LOGGED" && <MarkOutreachSentForm exceptionId={exception.id} />}
+                {canRecordResponse && <RecordResponseForm exceptionId={exception.id} />}
+                {exception.customerChoice && (
+                  <p className="text-sm text-zinc-600">
+                    <span className="font-medium">Customer chose:</span> {exception.customerChoice}
+                    {exception.resolutionType && (
+                      <span className="text-zinc-400"> ({RESOLUTION_TYPE_LABELS[exception.resolutionType]})</span>
+                    )}
+                  </p>
                 )}
-              </p>
-            )}
-            {canRecordResponse && <CloseNoResponseForm exceptionId={exception.id} />}
-          </div>
+                {canRecordResponse && <CloseNoResponseForm exceptionId={exception.id} />}
+              </div>
+            </>
+          )}
         </section>
       </div>
+
+      {showsCarrierClaim(exception.exceptionType) && (
+        <section className="space-y-2">
+          <h2 className="text-sm font-semibold text-zinc-900">Carrier claim</h2>
+          <p className="text-xs text-zinc-500">
+            Independent of the resolution above — for recovering cost from UPS/FedEx/etc., separate from
+            making the customer whole.
+          </p>
+          <CarrierClaimForm exception={exception} />
+        </section>
+      )}
 
       <section className="space-y-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4">
         <h2 className="text-sm font-semibold text-emerald-900">Resolution confirmation (Admin)</h2>

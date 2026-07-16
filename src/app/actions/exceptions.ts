@@ -21,7 +21,13 @@ const EXCEPTION_TYPES = [
   "ADDRESS_UPDATE",
   "OTHER",
 ] as const;
-const RESOLUTION_TYPES = ["REPLACEMENT_SHIPPED", "REFUNDED", "NO_RESPONSE", "OTHER"] as const;
+const RESOLUTION_TYPES = [
+  "REPLACEMENT_SHIPPED",
+  "REFUNDED",
+  "NO_RESPONSE",
+  "ADDRESS_UPDATED",
+  "OTHER",
+] as const;
 const STAGES = [
   "LOGGED",
   "OUTREACH_SENT",
@@ -66,9 +72,10 @@ async function notifyOnStageChange(
       excludeUserId: actorId,
     });
   } else if (newStage === "FULFILLED") {
+    const verb = resolutionType === "ADDRESS_UPDATED" ? "address updated" : "shipped";
     await notifyRoles(["ADMIN"], {
       exceptionId,
-      message: `Order #${orderNumber} — shipped, ready to confirm resolved.`,
+      message: `Order #${orderNumber} — ${verb}, ready to confirm resolved.`,
       excludeUserId: actorId,
     });
   }
@@ -367,6 +374,109 @@ export async function markFulfilled(_prev: ActionResult, formData: FormData): Pr
   return undefined;
 }
 
+// ---- Address update (skips outreach/customer-response entirely) -----------
+
+const AddressUpdateSchema = z.object({
+  correctedAddress: z.string().trim().min(1, "Enter the corrected address"),
+});
+
+export async function markAddressUpdated(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+  const id = requireExceptionId(formData);
+  const user = await getCurrentUser();
+  if (!canEditException(user.role)) {
+    return { error: "You don't have permission to do this." };
+  }
+
+  const exception = await db.exception.findUnique({ where: { id } });
+  if (!exception) return { error: "Not found." };
+  if (exception.exceptionType !== "ADDRESS_UPDATE") {
+    return { error: "This action is only for address-update exceptions." };
+  }
+  if (exception.stage !== "LOGGED") {
+    return { error: "Already marked updated." };
+  }
+
+  const parsed = AddressUpdateSchema.safeParse({
+    correctedAddress: formData.get("correctedAddress"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
+  }
+
+  await db.exception.update({
+    where: { id },
+    data: {
+      correctedAddress: parsed.data.correctedAddress,
+      stage: "FULFILLED",
+      stageChangedAt: new Date(),
+      resolutionType: "ADDRESS_UPDATED",
+      lastUpdatedById: user.id,
+    },
+  });
+  await logEvent(
+    id,
+    user.id,
+    `Address corrected and updated in ShipStation: ${parsed.data.correctedAddress}`
+  );
+  await notifyOnStageChange(id, exception.orderNumber, "FULFILLED", "ADDRESS_UPDATED", user.id);
+  revalidateAll(id);
+  return undefined;
+}
+
+// ---- Carrier claim (independent of the main resolution flow) ---------------
+
+const CarrierClaimSchema = z.object({
+  filed: z.literal("on").optional(),
+  reference: z.string().trim().optional(),
+});
+
+export async function updateCarrierClaim(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+  const id = requireExceptionId(formData);
+  const user = await getCurrentUser();
+  if (!canEditException(user.role)) {
+    return { error: "You don't have permission to do this." };
+  }
+
+  const exception = await db.exception.findUnique({ where: { id } });
+  if (!exception) return { error: "Not found." };
+
+  const parsed = CarrierClaimSchema.safeParse({
+    filed: formData.get("filed") || undefined,
+    reference: formData.get("reference") || undefined,
+  });
+  if (!parsed.success) {
+    return { error: "Invalid input." };
+  }
+
+  const filed = parsed.data.filed === "on";
+
+  await db.exception.update({
+    where: { id },
+    data: filed
+      ? {
+          carrierClaimFiledAt: exception.carrierClaimFiledAt ?? new Date(),
+          carrierClaimFiledById: user.id,
+          carrierClaimReference: parsed.data.reference,
+          lastUpdatedById: user.id,
+        }
+      : {
+          carrierClaimFiledAt: null,
+          carrierClaimFiledById: null,
+          carrierClaimReference: null,
+          lastUpdatedById: user.id,
+        },
+  });
+  await logEvent(
+    id,
+    user.id,
+    filed
+      ? `Marked carrier claim filed${parsed.data.reference ? ` (ref: ${parsed.data.reference})` : ""}`
+      : "Unmarked carrier claim filed"
+  );
+  revalidateAll(id);
+  return undefined;
+}
+
 // ---- Direct stage editor (any of the 3 roles, except into CONFIRMED_RESOLVED) --
 
 const UpdateStageSchema = z.object({
@@ -492,6 +602,7 @@ const AdminUpdateSchema = z.object({
   resolutionType: z.union([z.enum(RESOLUTION_TYPES), z.literal("")]).optional(),
   trackingNumber: z.string().trim().optional(),
   carrier: z.string().trim().optional(),
+  correctedAddress: z.string().trim().optional(),
 });
 
 export async function adminUpdateException(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
@@ -512,6 +623,7 @@ export async function adminUpdateException(_prev: ActionResult, formData: FormDa
     resolutionType: formData.get("resolutionType") || "",
     trackingNumber: formData.get("trackingNumber") || undefined,
     carrier: formData.get("carrier") || undefined,
+    correctedAddress: formData.get("correctedAddress") || undefined,
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
@@ -539,6 +651,7 @@ export async function adminUpdateException(_prev: ActionResult, formData: FormDa
       resolutionType: parsed.data.resolutionType ? parsed.data.resolutionType : null,
       trackingNumber: parsed.data.trackingNumber,
       carrier: parsed.data.carrier,
+      correctedAddress: parsed.data.correctedAddress,
       confirmedResolvedAt: enteringConfirmed ? new Date() : leavingConfirmed ? null : existing.confirmedResolvedAt,
       confirmedResolvedById: enteringConfirmed ? user.id : leavingConfirmed ? null : existing.confirmedResolvedById,
       lastUpdatedById: user.id,

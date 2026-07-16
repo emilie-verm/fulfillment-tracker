@@ -43,8 +43,27 @@ export const RESOLUTION_TYPE_LABELS: Record<ResolutionType, string> = {
   REPLACEMENT_SHIPPED: "Replacement shipped",
   REFUNDED: "Refunded",
   NO_RESPONSE: "No response from customer",
+  ADDRESS_UPDATED: "Address updated",
   OTHER: "Other",
 };
+
+// Exception types where the customer either gets a reship or a refund —
+// the full outreach -> customer-response -> fulfill flow applies.
+export const PRODUCT_RESOLUTION_TYPES: ExceptionType[] = [
+  "OUT_OF_STOCK",
+  "DAMAGED",
+  "LOST",
+  "WRONG_ITEM",
+  "OTHER",
+];
+
+// ADDRESS_UPDATE skips outreach/customer-response entirely — Mary already
+// has the corrected address from the customer when she logs it.
+export const isAddressUpdateType = (type: ExceptionType) => type === "ADDRESS_UPDATE";
+
+// DAMAGED/LOST may also need a claim filed with the carrier (UPS/FedEx) to
+// recover cost — independent of whether the customer's been made whole.
+export const showsCarrierClaim = (type: ExceptionType) => type === "DAMAGED" || type === "LOST";
 
 export const STOCK_STATUS_LABELS: Record<StockStatus, string> = {
   OUT_OF_STOCK: "Out of stock",

@@ -38,6 +38,15 @@ never the direct stage editor.
 If the customer chooses a refund instead of a replacement, `FULFILLED` is skipped — an admin can confirm
 resolution directly once the refund is issued.
 
+**Address updates work differently.** There's no customer choice to gather — Mary already has the
+corrected address when she logs it — so this type skips outreach/customer-response entirely:
+`LOGGED → FULFILLED (address corrected) → CONFIRMED_RESOLVED`. The detail page swaps in a single
+"corrected address" field and hides the outreach section for this type.
+
+**Damaged/lost exceptions get an extra, independent checkbox** for whether a claim's been filed with the
+carrier (UPS/FedEx/etc.) — this tracks cost recovery from the carrier, which is unrelated to whether the
+customer's been made whole, so it doesn't block or get blocked by the main resolution flow.
+
 ## Roles
 
 | Role | Can do |
