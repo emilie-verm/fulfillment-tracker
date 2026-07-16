@@ -6,7 +6,7 @@ import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/dal";
 import { hashPassword, verifyPassword } from "@/lib/password";
 
-const ROLES = ["FULFILLMENT", "OUTREACH", "ADMIN"] as const;
+const ROLES = ["FULFILLMENT", "OUTREACH", "ADMIN", "VIEWER"] as const;
 
 export type ActionResult = { error?: string; success?: string } | undefined;
 

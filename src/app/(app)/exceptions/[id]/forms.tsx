@@ -401,9 +401,11 @@ type CommentWithAuthor = ExceptionComment & { author: Pick<User, "name"> };
 export function CommentsSection({
   exceptionId,
   comments,
+  canComment,
 }: {
   exceptionId: string;
   comments: CommentWithAuthor[];
+  canComment: boolean;
 }) {
   const [state, action, pending] = useActionState(addComment, undefined);
   return (
@@ -421,20 +423,22 @@ export function CommentsSection({
           </li>
         ))}
       </ul>
-      <form action={action} className="space-y-2">
-        <input type="hidden" name="exceptionId" value={exceptionId} />
-        <textarea
-          name="body"
-          required
-          rows={2}
-          placeholder="Add a tracking update, replacement request, or anything else worth recording…"
-          className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
-        />
-        <ErrorText error={state?.error} />
-        <SubmitButton pending={pending} variant="secondary">
-          Add comment
-        </SubmitButton>
-      </form>
+      {canComment && (
+        <form action={action} className="space-y-2">
+          <input type="hidden" name="exceptionId" value={exceptionId} />
+          <textarea
+            name="body"
+            required
+            rows={2}
+            placeholder="Add a tracking update, replacement request, or anything else worth recording…"
+            className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+          />
+          <ErrorText error={state?.error} />
+          <SubmitButton pending={pending} variant="secondary">
+            Add comment
+          </SubmitButton>
+        </form>
+      )}
     </div>
   );
 }

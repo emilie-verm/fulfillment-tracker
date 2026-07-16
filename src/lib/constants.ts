@@ -102,4 +102,5 @@ export const ROLE_LABELS = {
   FULFILLMENT: "Fulfillment",
   OUTREACH: "Outreach",
   ADMIN: "Admin",
+  VIEWER: "Viewer (read-only)",
 } as const;

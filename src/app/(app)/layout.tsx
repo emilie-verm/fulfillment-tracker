@@ -28,7 +28,7 @@ export default async function AppLayout({
 
   return (
     <div className="flex min-h-screen flex-1 flex-col bg-zinc-50">
-      <header className="border-b border-zinc-200 bg-white">
+      <header className="border-b border-zinc-200 bg-brand-cream">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
           <div className="flex items-center gap-6">
             <span className="text-sm font-semibold text-zinc-900">

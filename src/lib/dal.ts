@@ -70,9 +70,12 @@ export const canEditStock = (role: Role) =>
 // one, including moving the stage directly — Mary logs reship/damaged/address
 // issues for Camille to act on, Camille logs OOS issues for Mary to reach out
 // on, so the split by role stopped making sense. "Confirmed resolved" is the
-// one action that stays admin-only (see canConfirmResolved).
-export const canEditException = (_role: Role) => true; // eslint-disable-line @typescript-eslint/no-unused-vars
+// one action that stays admin-only (see canConfirmResolved). VIEWER is
+// read-only across the whole app — for sharing progress with leadership.
+export const canEditException = (role: Role) => role !== "VIEWER";
 
 export const canCreateException = canEditException;
 
 export const canConfirmResolved = (role: Role) => role === "ADMIN";
+
+export const isViewer = (role: Role) => role === "VIEWER";

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
-import { getCurrentUser } from "@/lib/dal";
+import { canEditException, getCurrentUser } from "@/lib/dal";
 import { AgingFlag, ExceptionTypeBadge, StageBadge } from "@/components/badges";
 import { RESOLUTION_TYPE_LABELS, isAddressUpdateType, showsCarrierClaim } from "@/lib/constants";
 import {
@@ -57,14 +57,16 @@ export default async function ExceptionDetailPage({
   // stage directly — the guided buttons below just capture the right fields
   // for the common transitions; eligibility depends on the current stage,
   // not on who's logged in.
+  const canEdit = canEditException(user.role);
   const isAddressUpdate = isAddressUpdateType(exception.exceptionType);
   const canRecordResponse =
-    !isAddressUpdate && (exception.stage === "LOGGED" || exception.stage === "OUTREACH_SENT");
+    canEdit && !isAddressUpdate && (exception.stage === "LOGGED" || exception.stage === "OUTREACH_SENT");
   const canMarkFulfilled =
+    canEdit &&
     !isAddressUpdate &&
     exception.stage === "CUSTOMER_RESPONDED" &&
     (exception.resolutionType === "REPLACEMENT_SHIPPED" || user.role === "ADMIN");
-  const canMarkAddressUpdated = isAddressUpdate && exception.stage === "LOGGED";
+  const canMarkAddressUpdated = canEdit && isAddressUpdate && exception.stage === "LOGGED";
   const canConfirm =
     exception.stage === "FULFILLED" ||
     (exception.stage === "CUSTOMER_RESPONDED" &&
@@ -88,7 +90,7 @@ export default async function ExceptionDetailPage({
             </div>
           </div>
         </div>
-        {exception.stage !== "CONFIRMED_RESOLVED" && (
+        {canEdit && exception.stage !== "CONFIRMED_RESOLVED" && (
           <div className="mt-3 rounded-lg border border-zinc-200 bg-white p-3">
             <StageEditorForm exception={exception} />
           </div>
@@ -116,7 +118,13 @@ export default async function ExceptionDetailPage({
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="space-y-3 rounded-lg border border-zinc-200 bg-white p-4">
           <h2 className="text-sm font-semibold text-zinc-900">Fulfillment details</h2>
-          <FulfillmentFieldsForm exception={exception} />
+          {canEdit ? (
+            <FulfillmentFieldsForm exception={exception} />
+          ) : (
+            exception.fulfillmentNotes && (
+              <p className="text-sm text-zinc-600">{exception.fulfillmentNotes}</p>
+            )
+          )}
           <div className="border-t border-zinc-100 pt-3">
             {isAddressUpdate ? (
               canMarkAddressUpdated ? (
@@ -158,9 +166,13 @@ export default async function ExceptionDetailPage({
             </p>
           ) : (
             <>
-              <OutreachNotesForm exception={exception} />
+              {canEdit ? (
+                <OutreachNotesForm exception={exception} />
+              ) : (
+                exception.outreachNotes && <p className="text-sm text-zinc-600">{exception.outreachNotes}</p>
+              )}
               <div className="space-y-3 border-t border-zinc-100 pt-3">
-                {exception.stage === "LOGGED" && <MarkOutreachSentForm exceptionId={exception.id} />}
+                {canEdit && exception.stage === "LOGGED" && <MarkOutreachSentForm exceptionId={exception.id} />}
                 {canRecordResponse && <RecordResponseForm exceptionId={exception.id} />}
                 {exception.customerChoice && (
                   <p className="text-sm text-zinc-600">
@@ -184,7 +196,15 @@ export default async function ExceptionDetailPage({
             Independent of the resolution above — for recovering cost from UPS/FedEx/etc., separate from
             making the customer whole.
           </p>
-          <CarrierClaimForm exception={exception} />
+          {canEdit ? (
+            <CarrierClaimForm exception={exception} />
+          ) : (
+            <p className="text-sm text-zinc-600">
+              {exception.carrierClaimFiledAt
+                ? `Filed${exception.carrierClaimReference ? ` (ref: ${exception.carrierClaimReference})` : ""}`
+                : "Not filed yet."}
+            </p>
+          )}
         </section>
       )}
 
@@ -224,7 +244,7 @@ export default async function ExceptionDetailPage({
         <p className="text-xs text-zinc-500">
           Tracking updates, replacement requests, or anything else worth recording for each other.
         </p>
-        <CommentsSection exceptionId={exception.id} comments={exception.comments} />
+        <CommentsSection exceptionId={exception.id} comments={exception.comments} canComment={canEdit} />
       </section>
 
       <section className="space-y-2">

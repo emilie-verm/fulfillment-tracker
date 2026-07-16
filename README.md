@@ -54,6 +54,7 @@ customer's been made whole, so it doesn't block or get blocked by the main resol
 | **Fulfillment** (Camille) | Add/edit stock levels; create/edit any exception, including stage |
 | **Outreach** (Mary) | Create/edit any exception, including stage. Read-only on stock. |
 | **Admin** (Emilie) | Everything above, plus confirming final resolution, the full field/stage override panel, and managing user accounts |
+| **Viewer** | Read-only across the whole app — dashboard, exceptions, stock, archive. No create/edit buttons, forms, or stage controls anywhere. For sharing progress with leadership. |
 
 Every record shows a timestamp and who last touched it. Anything sitting in a non-final stage for more than
 2 days gets a yellow aging flag; 5+ days turns red, so nothing silently falls through the cracks.
@@ -76,7 +77,9 @@ load/navigation) — not a phone alert while they're away from the computer.
 
 - **Next.js 16** (App Router, Server Actions) + React 19 + TypeScript
 - **Postgres** via **Prisma 6**
-- **Tailwind CSS 4** for styling
+- **Tailwind CSS 4** for styling — brand palette (mint background, cream header, navy text/buttons) is
+  defined once in `src/app/globals.css` by overriding the `zinc-50`/`zinc-900` theme shades, so it applies
+  app-wide without touching individual components; cards stay white
 - Auth: email/password (bcrypt) + signed session cookie (jose), no third-party auth provider
 
 ## Local development
@@ -99,7 +102,8 @@ Visit `http://localhost:3000/login`.
 environment variables (`SEED_CAMILLE_PASSWORD`, `SEED_MARY_PASSWORD`, `SEED_EMILIE_PASSWORD`) if set,
 otherwise a random password is generated and printed once to the terminal — write it down, it isn't stored
 anywhere and won't be shown again. Everyone should change their password from the **Account** page after
-first login. An admin can add more accounts or reset passwords from the **Users** page in the app.
+first login. An admin can add more accounts (including a **Viewer** account for leadership) or reset
+passwords from the **Users** page in the app.
 
 ## Deploying on Railway
 

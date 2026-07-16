@@ -14,6 +14,7 @@ enum Role {
   FULFILLMENT // Camille: stock levels, full exception access, tracking/fulfillment
   OUTREACH // Mary: full exception access, read-only stock
   ADMIN // Emilie: full access, can confirm resolution
+  VIEWER // Read-only across everything — for sharing progress with leadership
 }
 
 enum StockStatus {
