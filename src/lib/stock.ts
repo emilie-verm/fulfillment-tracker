@@ -11,6 +11,7 @@ export async function getCurrentStockLevels() {
     include: {
       checkedBy: { select: { name: true } },
       websiteUpdatedBy: { select: { name: true } },
+      archivedBy: { select: { name: true } },
       comments: {
         orderBy: { createdAt: "asc" },
         include: { author: { select: { name: true } } },

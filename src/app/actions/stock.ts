@@ -82,6 +82,31 @@ export async function confirmWebsiteUpdated(_prev: ActionResult, formData: FormD
   return undefined;
 }
 
+// ---- Archive (dismiss from the active tables, keep in history) ------------
+
+export async function toggleStockArchive(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+  const id = requireStockCheckId(formData);
+  const user = await getCurrentUser();
+  if (!canEditStock(user.role)) {
+    return { error: "You don't have permission to archive this." };
+  }
+
+  const check = await db.stockCheck.findUnique({ where: { id } });
+  if (!check) return { error: "Not found." };
+
+  const nowArchived = !check.archivedAt;
+
+  await db.stockCheck.update({
+    where: { id },
+    data: nowArchived
+      ? { archivedAt: new Date(), archivedById: user.id }
+      : { archivedAt: null, archivedById: null },
+  });
+
+  revalidateStock();
+  return undefined;
+}
+
 // ---- Comments (Fulfillment/Outreach/Admin, not Viewer) --------------------
 
 const AddStockCommentSchema = z.object({

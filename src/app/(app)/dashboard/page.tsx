@@ -35,8 +35,11 @@ export default async function DashboardPage() {
     ]);
 
   const openCount = awaitingResponse.length + readyToFulfill.length + readyToConfirm.length;
+  // Drops out once the website's been confirmed updated to match, or once
+  // archived — this tile tracks what still needs action, not just the raw
+  // OOS/low count.
   const lowOrOosCount = stockLevels.filter(
-    (s) => s.status === "OUT_OF_STOCK" || s.status === "LOW_STOCK"
+    (s) => (s.status === "OUT_OF_STOCK" || s.status === "LOW_STOCK") && !s.websiteUpdatedAt && !s.archivedAt
   ).length;
 
   return (
@@ -52,7 +55,12 @@ export default async function DashboardPage() {
         <StatTile label="Open exceptions" value={openCount} href="/exceptions" />
         <StatTile label="Awaiting customer" value={awaitingResponse.length} />
         <StatTile label="Ready for Camille" value={readyToFulfill.length} />
-        <StatTile label="Low / out of stock" value={lowOrOosCount} href="/stock" tone={lowOrOosCount > 0 ? "warn" : "ok"} />
+        <StatTile
+          label="Low/OOS needing website update"
+          value={lowOrOosCount}
+          href="/stock"
+          tone={lowOrOosCount > 0 ? "warn" : "ok"}
+        />
       </div>
 
       <Section

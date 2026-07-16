@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { addStockComment, confirmWebsiteUpdated } from "@/app/actions/stock";
+import { addStockComment, confirmWebsiteUpdated, toggleStockArchive } from "@/app/actions/stock";
 import type { StockCheckComment, User } from "@prisma/client";
 
 function ErrorText({ error }: { error?: string }) {
@@ -54,6 +54,35 @@ export function WebsiteUpdatedControl({
           : confirmed
             ? `✓ Updated by ${confirmedByName ?? "you"}`
             : "Mark updated on website"}
+      </button>
+    </form>
+  );
+}
+
+// ---- Archive (Fulfillment/Admin — dismiss from active tables) ----------------
+
+export function ArchiveControl({
+  stockCheckId,
+  archived,
+  canArchive,
+}: {
+  stockCheckId: string;
+  archived: boolean;
+  canArchive: boolean;
+}) {
+  const [, action, pending] = useActionState(toggleStockArchive, undefined);
+
+  if (!canArchive) return null;
+
+  return (
+    <form action={action}>
+      <input type="hidden" name="stockCheckId" value={stockCheckId} />
+      <button
+        type="submit"
+        disabled={pending}
+        className="rounded-md bg-zinc-100 px-2 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-200 disabled:opacity-50"
+      >
+        {pending ? "Saving…" : archived ? "Unarchive" : "Archive"}
       </button>
     </form>
   );

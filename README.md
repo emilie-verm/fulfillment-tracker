@@ -6,6 +6,10 @@ A small internal tool for the fulfillment and ecommerce team to track:
   Current levels are grouped into three separate tables by status (Out of stock / Low stock / High stock)
   rather than one flat list. Each entry has its own comment thread (e.g. a restock request) and an
   admin-only confirmation that the website (Shopify) was actually updated to match, not just logged.
+  A handled item can also be archived (Fulfillment/Admin) so it stops showing in the active tables and
+  dashboard count without deleting the history — logging a fresh check for that product later (e.g. it's
+  back in stock a few days after being marked out) automatically shows up as active again, so nothing
+  ever sits in both places at once.
 - **Order exceptions + outreach** — one record per affected order line item. Camille and Mary can both log
   and edit exceptions (a reship/damaged/address issue Mary heard about from a customer, or an OOS item
   Camille found that needs outreach), so both sides stay in sync regardless of who created it.
@@ -54,7 +58,7 @@ customer's been made whole, so it doesn't block or get blocked by the main resol
 
 | Role | Can do |
 |---|---|
-| **Fulfillment** (Camille) | Add/edit stock levels; create/edit any exception, including stage |
+| **Fulfillment** (Camille) | Add/edit stock levels, archive/unarchive stock entries; create/edit any exception, including stage |
 | **Outreach** (Mary) | Create/edit any exception, including stage. Read-only on stock. |
 | **Admin** (Emilie) | Everything above, plus confirming final resolution, the full field/stage override panel, and managing user accounts (add, change role, reset password, deactivate/reactivate) |
 | **Viewer** | Read-only across the whole app — dashboard, exceptions, stock, archive. No create/edit buttons, forms, or stage controls anywhere. For sharing progress with leadership. |

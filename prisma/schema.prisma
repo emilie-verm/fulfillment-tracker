@@ -65,6 +65,7 @@ model User {
 
   stockChecks             StockCheck[]        @relation("StockCheckedBy")
   stockChecksWebsiteBy    StockCheck[]        @relation("StockCheckWebsiteUpdatedBy")
+  stockChecksArchivedBy   StockCheck[]        @relation("StockCheckArchivedBy")
   stockCheckComments      StockCheckComment[] @relation("StockCheckCommentAuthor")
   exceptionsCreated       Exception[]         @relation("ExceptionCreatedBy")
   exceptionsUpdated       Exception[]         @relation("ExceptionLastUpdatedBy")
@@ -93,6 +94,14 @@ model StockCheck {
   websiteUpdatedAt   DateTime?
   websiteUpdatedById String?
   websiteUpdatedBy   User?     @relation("StockCheckWebsiteUpdatedBy", fields: [websiteUpdatedById], references: [id])
+
+  // Dismisses this entry from the active Out of stock/Low/High tables into
+  // a separate Archived section, without deleting it — e.g. once handled
+  // but not yet restocked. A fresh check on the same product always shows
+  // normally regardless of this, since it's a new row with archivedAt unset.
+  archivedAt   DateTime?
+  archivedById String?
+  archivedBy   User?     @relation("StockCheckArchivedBy", fields: [archivedById], references: [id])
 
   comments      StockCheckComment[]
   notifications Notification[]
