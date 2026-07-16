@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { canCommentOnStock, canConfirmWebsiteUpdate, canEditStock, getCurrentUser } from "@/lib/dal";
 import { getCurrentStockLevels } from "@/lib/stock";
 import { StockStatusBadge } from "@/components/badges";
-import { STOCK_STATUS_LABELS } from "@/lib/constants";
+import { STOCK_STATUS_COLORS, STOCK_STATUS_LABELS } from "@/lib/constants";
 import AddStockForm from "./add-stock-form";
 import { StockCommentsSection, WebsiteUpdatedControl } from "./stock-forms";
 import type { StockStatus } from "@prisma/client";
@@ -56,9 +56,11 @@ export default async function StockPage() {
 
             return (
               <div key={status}>
-                <h3 className="mb-2 flex items-center gap-2 text-sm font-medium text-zinc-700">
+                <h3
+                  className={`mb-2 inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-medium ring-1 ring-inset ${STOCK_STATUS_COLORS[status]}`}
+                >
                   {STOCK_STATUS_LABELS[status]}
-                  <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-500">
+                  <span className="rounded-full bg-white/70 px-2 py-0.5 text-xs">
                     {group.length}
                   </span>
                 </h3>
