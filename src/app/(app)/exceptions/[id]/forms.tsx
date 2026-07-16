@@ -501,6 +501,24 @@ export function AddressUpdateForm({ exceptionId }: { exceptionId: string }) {
         placeholder="Full corrected shipping address from the customer"
         className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
       />
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs font-medium text-zinc-600">Tracking number (once shipped)</label>
+          <input
+            name="trackingNumber"
+            placeholder="Optional if not shipped yet"
+            className="mt-1 w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-zinc-600">Carrier (optional)</label>
+          <input
+            name="carrier"
+            placeholder="FedEx, UPS…"
+            className="mt-1 w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+          />
+        </div>
+      </div>
       <ErrorText error={state?.error} />
       <SubmitButton pending={pending}>Mark address updated in ShipStation</SubmitButton>
     </form>

@@ -378,6 +378,8 @@ export async function markFulfilled(_prev: ActionResult, formData: FormData): Pr
 
 const AddressUpdateSchema = z.object({
   correctedAddress: z.string().trim().min(1, "Enter the corrected address"),
+  trackingNumber: z.string().trim().optional(),
+  carrier: z.string().trim().optional(),
 });
 
 export async function markAddressUpdated(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
@@ -398,6 +400,8 @@ export async function markAddressUpdated(_prev: ActionResult, formData: FormData
 
   const parsed = AddressUpdateSchema.safeParse({
     correctedAddress: formData.get("correctedAddress"),
+    trackingNumber: formData.get("trackingNumber") || undefined,
+    carrier: formData.get("carrier") || undefined,
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
@@ -407,6 +411,9 @@ export async function markAddressUpdated(_prev: ActionResult, formData: FormData
     where: { id },
     data: {
       correctedAddress: parsed.data.correctedAddress,
+      trackingNumber: parsed.data.trackingNumber,
+      carrier: parsed.data.carrier,
+      shippedAt: parsed.data.trackingNumber ? new Date() : undefined,
       stage: "FULFILLED",
       stageChangedAt: new Date(),
       resolutionType: "ADDRESS_UPDATED",
@@ -416,7 +423,8 @@ export async function markAddressUpdated(_prev: ActionResult, formData: FormData
   await logEvent(
     id,
     user.id,
-    `Address corrected and updated in ShipStation: ${parsed.data.correctedAddress}`
+    `Address corrected and updated in ShipStation: ${parsed.data.correctedAddress}` +
+      (parsed.data.trackingNumber ? ` (tracking: ${parsed.data.trackingNumber})` : "")
   );
   await notifyOnStageChange(id, exception.orderNumber, "FULFILLED", "ADDRESS_UPDATED", user.id);
   revalidateAll(id);

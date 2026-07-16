@@ -140,6 +140,12 @@ export default async function ExceptionDetailPage({
                 <div className="text-sm text-zinc-600">
                   <p className="font-medium">Corrected address:</p>
                   <p className="whitespace-pre-wrap">{exception.correctedAddress}</p>
+                  {exception.trackingNumber && (
+                    <p className="mt-2">
+                      Shipped: <span className="font-medium">{exception.trackingNumber}</span>
+                      {exception.carrier ? ` (${exception.carrier})` : ""}
+                    </p>
+                  )}
                 </div>
               ) : null
             ) : canMarkFulfilled ? (
