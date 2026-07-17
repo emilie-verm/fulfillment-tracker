@@ -30,6 +30,7 @@ export const EXCEPTION_TYPE_LABELS: Record<ExceptionType, string> = {
   LOST: "Lost in transit",
   WRONG_ITEM: "Wrong item shipped",
   ADDRESS_UPDATE: "Address update",
+  GIFT_NOTE: "Gift note",
   OTHER: "Other",
 };
 
@@ -44,6 +45,7 @@ export const RESOLUTION_TYPE_LABELS: Record<ResolutionType, string> = {
   REFUNDED: "Refunded",
   NO_RESPONSE: "No response from customer",
   ADDRESS_UPDATED: "Address updated",
+  GIFT_NOTE_ADDED: "Gift note added to order",
   OTHER: "Other",
 };
 
@@ -60,6 +62,11 @@ export const PRODUCT_RESOLUTION_TYPES: ExceptionType[] = [
 // ADDRESS_UPDATE skips outreach/customer-response entirely — Mary already
 // has the corrected address from the customer when she logs it.
 export const isAddressUpdateType = (type: ExceptionType) => type === "ADDRESS_UPDATE";
+
+// GIFT_NOTE skips outreach/customer-response too — Mary already has the
+// note text and the $5 fee is invoiced separately, not negotiated with the
+// customer through this flow.
+export const isGiftNoteType = (type: ExceptionType) => type === "GIFT_NOTE";
 
 // DAMAGED/LOST may also need a claim filed with the carrier (UPS/FedEx) to
 // recover cost — independent of whether the customer's been made whole.

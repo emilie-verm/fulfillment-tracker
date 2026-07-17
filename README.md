@@ -54,6 +54,13 @@ corrected address when she logs it — so this type skips outreach/customer-resp
 carrier (UPS/FedEx/etc.) — this tracks cost recovery from the carrier, which is unrelated to whether the
 customer's been made whole, so it doesn't block or get blocked by the main resolution flow.
 
+**Gift notes work like address updates** — no customer choice to gather, so they skip outreach/
+customer-response too: `LOGGED → FULFILLED (added to order) → CONFIRMED_RESOLVED`. The detail page swaps in
+a "gift note copy" field (editable by anyone) plus an independent "$5 invoice paid" toggle — independent
+because whether the fee's cleared doesn't block or get blocked by whether the note's physically gone in the
+box. Only Fulfillment or an admin can confirm the note was actually added to the order, same as the
+admin-only website-update confirmation on stock checks.
+
 ## Roles
 
 | Role | Can do |

@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import {
+  canConfirmGiftNoteAdded,
   canConfirmResolved,
   canCreateException,
   canEditException,
@@ -19,6 +20,7 @@ const EXCEPTION_TYPES = [
   "LOST",
   "WRONG_ITEM",
   "ADDRESS_UPDATE",
+  "GIFT_NOTE",
   "OTHER",
 ] as const;
 const RESOLUTION_TYPES = [
@@ -26,6 +28,7 @@ const RESOLUTION_TYPES = [
   "REFUNDED",
   "NO_RESPONSE",
   "ADDRESS_UPDATED",
+  "GIFT_NOTE_ADDED",
   "OTHER",
 ] as const;
 const STAGES = [
@@ -72,7 +75,12 @@ async function notifyOnStageChange(
       excludeUserId: actorId,
     });
   } else if (newStage === "FULFILLED") {
-    const verb = resolutionType === "ADDRESS_UPDATED" ? "address updated" : "shipped";
+    const verb =
+      resolutionType === "ADDRESS_UPDATED"
+        ? "address updated"
+        : resolutionType === "GIFT_NOTE_ADDED"
+          ? "gift note added"
+          : "shipped";
     await notifyRoles(["ADMIN"], {
       exceptionId,
       message: `Order #${orderNumber} — ${verb}, ready to confirm resolved.`,
@@ -427,6 +435,100 @@ export async function markAddressUpdated(_prev: ActionResult, formData: FormData
       (parsed.data.trackingNumber ? ` (tracking: ${parsed.data.trackingNumber})` : "")
   );
   await notifyOnStageChange(id, exception.orderNumber, "FULFILLED", "ADDRESS_UPDATED", user.id);
+  revalidateAll(id);
+  return undefined;
+}
+
+// ---- Gift note (skips outreach/customer-response, like address update) ----
+
+const GiftNoteTextSchema = z.object({
+  giftNoteText: z.string().trim().min(1, "Enter the gift note text"),
+});
+
+export async function updateGiftNoteText(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+  const id = requireExceptionId(formData);
+  const user = await getCurrentUser();
+  if (!canEditException(user.role)) {
+    return { error: "You don't have permission to do this." };
+  }
+
+  const exception = await db.exception.findUnique({ where: { id } });
+  if (!exception) return { error: "Not found." };
+  if (exception.exceptionType !== "GIFT_NOTE") {
+    return { error: "This action is only for gift-note exceptions." };
+  }
+
+  const parsed = GiftNoteTextSchema.safeParse({
+    giftNoteText: formData.get("giftNoteText"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
+  }
+
+  await db.exception.update({
+    where: { id },
+    data: { giftNoteText: parsed.data.giftNoteText, lastUpdatedById: user.id },
+  });
+  await logEvent(id, user.id, `Gift note text saved: "${parsed.data.giftNoteText}"`);
+  revalidateAll(id);
+  return undefined;
+}
+
+// Independent of whether the note's been added to the order — tracks the
+// separate $5 invoice Mary sends, same "independent fact" relationship as
+// the carrier claim below.
+export async function updateGiftNoteInvoicePaid(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+  const id = requireExceptionId(formData);
+  const user = await getCurrentUser();
+  if (!canEditException(user.role)) {
+    return { error: "You don't have permission to do this." };
+  }
+
+  const exception = await db.exception.findUnique({ where: { id } });
+  if (!exception) return { error: "Not found." };
+
+  const nowPaid = !exception.giftNoteInvoicePaidAt;
+
+  await db.exception.update({
+    where: { id },
+    data: nowPaid
+      ? { giftNoteInvoicePaidAt: new Date(), giftNoteInvoicePaidById: user.id }
+      : { giftNoteInvoicePaidAt: null, giftNoteInvoicePaidById: null },
+  });
+  await logEvent(id, user.id, nowPaid ? "Marked $5 gift note invoice as paid" : "Marked $5 gift note invoice as unpaid");
+  revalidateAll(id);
+  return undefined;
+}
+
+// Camille's (or Emilie's) confirmation that the note was physically added
+// to the order — the main resolution step for this exception type.
+export async function markGiftNoteAdded(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+  const id = requireExceptionId(formData);
+  const user = await getCurrentUser();
+  if (!canConfirmGiftNoteAdded(user.role)) {
+    return { error: "Only Fulfillment or an admin can confirm this." };
+  }
+
+  const exception = await db.exception.findUnique({ where: { id } });
+  if (!exception) return { error: "Not found." };
+  if (exception.exceptionType !== "GIFT_NOTE") {
+    return { error: "This action is only for gift-note exceptions." };
+  }
+  if (exception.stage !== "LOGGED") {
+    return { error: "Already marked added." };
+  }
+
+  await db.exception.update({
+    where: { id },
+    data: {
+      stage: "FULFILLED",
+      stageChangedAt: new Date(),
+      resolutionType: "GIFT_NOTE_ADDED",
+      lastUpdatedById: user.id,
+    },
+  });
+  await logEvent(id, user.id, "Confirmed gift note added to the order");
+  await notifyOnStageChange(id, exception.orderNumber, "FULFILLED", "GIFT_NOTE_ADDED", user.id);
   revalidateAll(id);
   return undefined;
 }

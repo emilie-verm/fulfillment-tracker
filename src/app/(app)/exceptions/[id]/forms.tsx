@@ -8,10 +8,13 @@ import {
   confirmResolved,
   markAddressUpdated,
   markFulfilled,
+  markGiftNoteAdded,
   markOutreachSent,
   recordCustomerResponse,
   updateCarrierClaim,
   updateFulfillmentFields,
+  updateGiftNoteInvoicePaid,
+  updateGiftNoteText,
   updateOutreachNotes,
   updateStage,
 } from "@/app/actions/exceptions";
@@ -521,6 +524,60 @@ export function AddressUpdateForm({ exceptionId }: { exceptionId: string }) {
       </div>
       <ErrorText error={state?.error} />
       <SubmitButton pending={pending}>Mark address updated in ShipStation</SubmitButton>
+    </form>
+  );
+}
+
+// ---- Gift note (any of the 3 roles enter the text; Fulfillment/Admin confirm added) --
+
+export function GiftNoteTextForm({ exception }: { exception: Exception }) {
+  const [state, action, pending] = useActionState(updateGiftNoteText, undefined);
+  return (
+    <form action={action} className="space-y-2">
+      <input type="hidden" name="exceptionId" value={exception.id} />
+      <label className="block text-xs font-medium text-zinc-600">Gift note copy</label>
+      <textarea
+        name="giftNoteText"
+        required
+        rows={3}
+        defaultValue={exception.giftNoteText ?? ""}
+        placeholder="Exactly what the customer wants the note to say"
+        className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+      />
+      <ErrorText error={state?.error} />
+      <SubmitButton pending={pending} variant="secondary">
+        Save gift note text
+      </SubmitButton>
+    </form>
+  );
+}
+
+export function GiftNoteInvoicePaidControl({ exception }: { exception: Exception }) {
+  const [, action, pending] = useActionState(updateGiftNoteInvoicePaid, undefined);
+  const paid = Boolean(exception.giftNoteInvoicePaidAt);
+  return (
+    <form action={action}>
+      <input type="hidden" name="exceptionId" value={exception.id} />
+      <button
+        type="submit"
+        disabled={pending}
+        className={`rounded-md px-3 py-1.5 text-sm font-medium disabled:opacity-50 ${
+          paid ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-200" : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
+        }`}
+      >
+        {pending ? "Saving…" : paid ? "✓ $5 invoice paid" : "Mark $5 invoice as paid"}
+      </button>
+    </form>
+  );
+}
+
+export function MarkGiftNoteAddedForm({ exceptionId }: { exceptionId: string }) {
+  const [state, action, pending] = useActionState(markGiftNoteAdded, undefined);
+  return (
+    <form action={action} className="space-y-2">
+      <input type="hidden" name="exceptionId" value={exceptionId} />
+      <ErrorText error={state?.error} />
+      <SubmitButton pending={pending}>Confirm added to order</SubmitButton>
     </form>
   );
 }

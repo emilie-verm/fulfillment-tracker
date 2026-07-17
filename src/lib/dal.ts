@@ -72,6 +72,12 @@ export const canEditStock = (role: Role) =>
 // a stock report — separate from Camille/anyone logging the check itself.
 export const canConfirmWebsiteUpdate = (role: Role) => role === "ADMIN";
 
+// Camille (or Emilie as override) confirms a gift note was physically added
+// to the order — same "fulfillment does the physical part" shape as
+// canEditStock, distinct from who can enter the note text or track payment.
+export const canConfirmGiftNoteAdded = (role: Role) =>
+  role === "FULFILLMENT" || role === "ADMIN";
+
 // Same "not Viewer" rule as exception comments — collaborative, not tied to
 // who can edit the underlying stock check itself (Mary can comment on stock
 // even though she's read-only on the levels).

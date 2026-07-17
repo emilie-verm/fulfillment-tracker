@@ -29,6 +29,7 @@ enum ExceptionType {
   LOST
   WRONG_ITEM
   ADDRESS_UPDATE
+  GIFT_NOTE
   OTHER
 }
 
@@ -48,6 +49,7 @@ enum ResolutionType {
   REFUNDED
   NO_RESPONSE
   ADDRESS_UPDATED
+  GIFT_NOTE_ADDED
   OTHER
 }
 
@@ -71,6 +73,7 @@ model User {
   exceptionsUpdated       Exception[]         @relation("ExceptionLastUpdatedBy")
   exceptionsConfirmed     Exception[]         @relation("ExceptionConfirmedBy")
   exceptionsClaimFiledBy  Exception[]         @relation("ExceptionCarrierClaimFiledBy")
+  exceptionsGiftNoteInvoicePaidBy Exception[] @relation("ExceptionGiftNoteInvoicePaidBy")
   exceptionEvents         ExceptionEvent[]    @relation("ExceptionEventActor")
   exceptionComments       ExceptionComment[]  @relation("ExceptionCommentAuthor")
   notifications           Notification[]
@@ -155,6 +158,15 @@ model Exception {
   carrierClaimFiledById String?
   carrierClaimFiledBy   User?     @relation("ExceptionCarrierClaimFiledBy", fields: [carrierClaimFiledById], references: [id])
   carrierClaimReference String?
+
+  // GIFT_NOTE exceptions skip outreach/customer-response too — Mary already
+  // has the note text from the customer. The $5 invoice payment is tracked
+  // independently of Camille physically adding the note to the order,
+  // same relationship as the carrier claim above.
+  giftNoteText           String?
+  giftNoteInvoicePaidAt   DateTime?
+  giftNoteInvoicePaidById String?
+  giftNoteInvoicePaidBy   User?     @relation("ExceptionGiftNoteInvoicePaidBy", fields: [giftNoteInvoicePaidById], references: [id])
 
   // Set once the exception reaches a terminal stage
   resolutionType ResolutionType?

@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
-import { canEditException, getCurrentUser } from "@/lib/dal";
+import { canConfirmGiftNoteAdded, canEditException, getCurrentUser } from "@/lib/dal";
 import { AgingFlag, ExceptionTypeBadge, StageBadge } from "@/components/badges";
-import { RESOLUTION_TYPE_LABELS, isAddressUpdateType, showsCarrierClaim } from "@/lib/constants";
+import { RESOLUTION_TYPE_LABELS, isAddressUpdateType, isGiftNoteType, showsCarrierClaim } from "@/lib/constants";
 import {
   AddressUpdateForm,
   AdminEditForm,
@@ -12,7 +12,10 @@ import {
   CommentsSection,
   ConfirmResolvedForm,
   FulfillmentFieldsForm,
+  GiftNoteInvoicePaidControl,
+  GiftNoteTextForm,
   MarkFulfilledForm,
+  MarkGiftNoteAddedForm,
   MarkOutreachSentForm,
   OutreachNotesForm,
   RecordResponseForm,
@@ -66,14 +69,17 @@ export default async function ExceptionDetailPage({
   // not on who's logged in.
   const canEdit = canEditException(user.role);
   const isAddressUpdate = isAddressUpdateType(exception.exceptionType);
+  const isGiftNote = isGiftNoteType(exception.exceptionType);
+  const skipsOutreach = isAddressUpdate || isGiftNote;
   const canRecordResponse =
-    canEdit && !isAddressUpdate && (exception.stage === "LOGGED" || exception.stage === "OUTREACH_SENT");
+    canEdit && !skipsOutreach && (exception.stage === "LOGGED" || exception.stage === "OUTREACH_SENT");
   const canMarkFulfilled =
     canEdit &&
-    !isAddressUpdate &&
+    !skipsOutreach &&
     exception.stage === "CUSTOMER_RESPONDED" &&
     (exception.resolutionType === "REPLACEMENT_SHIPPED" || user.role === "ADMIN");
   const canMarkAddressUpdated = canEdit && isAddressUpdate && exception.stage === "LOGGED";
+  const canMarkGiftNoteAdded = canConfirmGiftNoteAdded(user.role) && isGiftNote && exception.stage === "LOGGED";
   const canConfirm =
     exception.stage === "FULFILLED" ||
     (exception.stage === "CUSTOMER_RESPONDED" &&
@@ -133,7 +139,30 @@ export default async function ExceptionDetailPage({
             )
           )}
           <div className="border-t border-zinc-100 pt-3">
-            {isAddressUpdate ? (
+            {isGiftNote ? (
+              <div className="space-y-3">
+                {canEdit ? (
+                  <GiftNoteTextForm exception={exception} />
+                ) : exception.giftNoteText ? (
+                  <div className="text-sm text-zinc-600">
+                    <p className="font-medium">Gift note copy:</p>
+                    <p className="whitespace-pre-wrap">{exception.giftNoteText}</p>
+                  </div>
+                ) : (
+                  <p className="text-sm text-zinc-400">No gift note text saved yet.</p>
+                )}
+                {canEdit && <GiftNoteInvoicePaidControl exception={exception} />}
+                <div className="border-t border-zinc-100 pt-3">
+                  {canMarkGiftNoteAdded ? (
+                    <MarkGiftNoteAddedForm exceptionId={exception.id} />
+                  ) : exception.stage !== "LOGGED" ? (
+                    <p className="text-sm text-emerald-700">✓ Added to the order.</p>
+                  ) : (
+                    <p className="text-sm text-zinc-400">Waiting on Camille to confirm it&apos;s been added to the order.</p>
+                  )}
+                </div>
+              </div>
+            ) : isAddressUpdate ? (
               canMarkAddressUpdated ? (
                 <AddressUpdateForm exceptionId={exception.id} />
               ) : exception.correctedAddress ? (
@@ -175,6 +204,11 @@ export default async function ExceptionDetailPage({
           {isAddressUpdate ? (
             <p className="text-sm text-zinc-400">
               Not needed for address updates — the corrected address comes straight from the customer
+              when this is logged.
+            </p>
+          ) : isGiftNote ? (
+            <p className="text-sm text-zinc-400">
+              Not needed for gift notes — Mary already has the note text and fee from the customer
               when this is logged.
             </p>
           ) : (
