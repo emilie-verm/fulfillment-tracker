@@ -1,11 +1,12 @@
 import "server-only";
-import type { Prisma } from "@prisma/client";
+import type { ExceptionStage, Prisma } from "@prisma/client";
 import { TERMINAL_STAGES } from "@/lib/constants";
 
 export type ExceptionSearchParams = {
   orderNumber?: string;
   productName?: string;
   stage?: string;
+  resolutionType?: string;
   exceptionType?: string;
   from?: string;
   to?: string;
@@ -25,9 +26,16 @@ export function buildExceptionWhere(
     where.productName = { contains: params.productName, mode: "insensitive" };
   }
   if (params.stage) {
-    where.stage = params.stage as Prisma.EnumExceptionStageFilter["equals"];
+    // Dashboard tiles link here with a comma-separated list (e.g. a stage
+    // spanning "awaiting customer" covers two stages) — the visible filter
+    // form only ever submits one, so a plain equals still covers that case.
+    const stages = params.stage.split(",").filter(Boolean) as ExceptionStage[];
+    where.stage = stages.length > 1 ? { in: stages } : stages[0];
   } else if (defaultOpenOnly && params.view !== "all") {
     where.stage = { notIn: TERMINAL_STAGES };
+  }
+  if (params.resolutionType) {
+    where.resolutionType = params.resolutionType as Prisma.EnumResolutionTypeNullableFilter["equals"];
   }
   if (params.exceptionType) {
     where.exceptionType = params.exceptionType as Prisma.EnumExceptionTypeFilter["equals"];

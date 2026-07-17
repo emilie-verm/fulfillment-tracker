@@ -53,8 +53,16 @@ export default async function DashboardPage() {
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <StatTile label="Open exceptions" value={openCount} href="/exceptions" />
-        <StatTile label="Awaiting customer" value={awaitingResponse.length} />
-        <StatTile label="Ready for Camille" value={readyToFulfill.length} />
+        <StatTile
+          label="Awaiting customer"
+          value={awaitingResponse.length}
+          href="/exceptions?stage=LOGGED,OUTREACH_SENT"
+        />
+        <StatTile
+          label="Ready for Camille"
+          value={readyToFulfill.length}
+          href="/exceptions?stage=CUSTOMER_RESPONDED&resolutionType=REPLACEMENT_SHIPPED"
+        />
         <StatTile
           label="Low/OOS needing website update"
           value={lowOrOosCount}
