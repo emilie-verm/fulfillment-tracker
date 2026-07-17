@@ -1,19 +1,20 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
-import { canConfirmGiftNoteAdded, canEditException, getCurrentUser } from "@/lib/dal";
+import { canConfirmAddressUpdated, canConfirmGiftNoteAdded, canEditException, getCurrentUser } from "@/lib/dal";
 import { AgingFlag, ExceptionTypeBadge, StageBadge } from "@/components/badges";
 import { RESOLUTION_TYPE_LABELS, isAddressUpdateType, isGiftNoteType, showsCarrierClaim } from "@/lib/constants";
 import {
-  AddressUpdateForm,
   AdminEditForm,
   CarrierClaimForm,
   CloseNoResponseForm,
   CommentsSection,
   ConfirmResolvedForm,
+  CorrectedAddressForm,
   FulfillmentFieldsForm,
   GiftNoteInvoicePaidControl,
   GiftNoteTextForm,
+  MarkAddressUpdatedForm,
   MarkFulfilledForm,
   MarkGiftNoteAddedForm,
   MarkOutreachSentForm,
@@ -78,7 +79,11 @@ export default async function ExceptionDetailPage({
     !skipsOutreach &&
     exception.stage === "CUSTOMER_RESPONDED" &&
     (exception.resolutionType === "REPLACEMENT_SHIPPED" || user.role === "ADMIN");
-  const canMarkAddressUpdated = canEdit && isAddressUpdate && exception.stage === "LOGGED";
+  const canMarkAddressUpdated =
+    canConfirmAddressUpdated(user.role) &&
+    isAddressUpdate &&
+    exception.stage === "LOGGED" &&
+    Boolean(exception.correctedAddress);
   const canMarkGiftNoteAdded = canConfirmGiftNoteAdded(user.role) && isGiftNote && exception.stage === "LOGGED";
   const canConfirm =
     exception.stage === "FULFILLED" ||
@@ -163,9 +168,31 @@ export default async function ExceptionDetailPage({
                 </div>
               </div>
             ) : isAddressUpdate ? (
-              canMarkAddressUpdated ? (
-                <AddressUpdateForm exceptionId={exception.id} />
-              ) : exception.correctedAddress ? (
+              exception.stage === "LOGGED" ? (
+                <div className="space-y-3">
+                  {canEdit ? (
+                    <CorrectedAddressForm exception={exception} />
+                  ) : exception.correctedAddress ? (
+                    <div className="text-sm text-zinc-600">
+                      <p className="font-medium">Corrected address:</p>
+                      <p className="whitespace-pre-wrap">{exception.correctedAddress}</p>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-zinc-400">No corrected address saved yet.</p>
+                  )}
+                  <div className="border-t border-zinc-100 pt-3">
+                    {canMarkAddressUpdated ? (
+                      <MarkAddressUpdatedForm exceptionId={exception.id} />
+                    ) : exception.correctedAddress ? (
+                      <p className="text-sm text-zinc-400">Waiting on Camille to update it in ShipStation.</p>
+                    ) : (
+                      <p className="text-sm text-zinc-400">
+                        Waiting on the corrected address before Camille can update ShipStation.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ) : (
                 <div className="text-sm text-zinc-600">
                   <p className="font-medium">Corrected address:</p>
                   <p className="whitespace-pre-wrap">{exception.correctedAddress}</p>
@@ -176,7 +203,7 @@ export default async function ExceptionDetailPage({
                     </p>
                   )}
                 </div>
-              ) : null
+              )
             ) : canMarkFulfilled ? (
               <MarkFulfilledForm exceptionId={exception.id} />
             ) : exception.trackingNumber ? (

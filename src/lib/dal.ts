@@ -78,6 +78,13 @@ export const canConfirmWebsiteUpdate = (role: Role) => role === "ADMIN";
 export const canConfirmGiftNoteAdded = (role: Role) =>
   role === "FULFILLMENT" || role === "ADMIN";
 
+// Camille (or Emilie) is the one who actually applies the correction in
+// ShipStation, so she's the one who confirms it's done — distinct from who
+// can enter/edit the corrected address text itself (any of the 3 roles,
+// since Mary is usually the one relaying it from the customer).
+export const canConfirmAddressUpdated = (role: Role) =>
+  role === "FULFILLMENT" || role === "ADMIN";
+
 // Same "not Viewer" rule as exception comments — collaborative, not tied to
 // who can edit the underlying stock check itself (Mary can comment on stock
 // even though she's read-only on the levels).

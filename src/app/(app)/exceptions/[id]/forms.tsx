@@ -12,6 +12,7 @@ import {
   markOutreachSent,
   recordCustomerResponse,
   updateCarrierClaim,
+  updateCorrectedAddress,
   updateFulfillmentFields,
   updateGiftNoteInvoicePaid,
   updateGiftNoteText,
@@ -489,21 +490,39 @@ export function CommentsSection({
   );
 }
 
-// ---- Address update (any of the 3 roles) --------------------------------------
+// ---- Address update: text entry (any of the 3 roles) — Mary saves this as
+// soon as she has it from the customer, whether that's right away or later --
 
-export function AddressUpdateForm({ exceptionId }: { exceptionId: string }) {
-  const [state, action, pending] = useActionState(markAddressUpdated, undefined);
+export function CorrectedAddressForm({ exception }: { exception: Exception }) {
+  const [state, action, pending] = useActionState(updateCorrectedAddress, undefined);
   return (
     <form action={action} className="space-y-2">
-      <input type="hidden" name="exceptionId" value={exceptionId} />
+      <input type="hidden" name="exceptionId" value={exception.id} />
       <label className="block text-xs font-medium text-zinc-600">Corrected address</label>
       <textarea
         name="correctedAddress"
         required
         rows={3}
-        placeholder="Full corrected shipping address from the customer"
+        defaultValue={exception.correctedAddress ?? ""}
+        placeholder="Full corrected shipping address from the customer — leave blank and save later if you don't have it yet"
         className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
       />
+      <ErrorText error={state?.error} />
+      <SubmitButton pending={pending} variant="secondary">
+        Save corrected address
+      </SubmitButton>
+    </form>
+  );
+}
+
+// ---- Address update: confirm (Fulfillment/Admin only) — Camille's the one
+// who actually applies it in ShipStation, so she's the one who confirms it --
+
+export function MarkAddressUpdatedForm({ exceptionId }: { exceptionId: string }) {
+  const [state, action, pending] = useActionState(markAddressUpdated, undefined);
+  return (
+    <form action={action} className="space-y-2">
+      <input type="hidden" name="exceptionId" value={exceptionId} />
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-medium text-zinc-600">Tracking number (once shipped)</label>

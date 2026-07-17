@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import {
+  canConfirmAddressUpdated,
   canConfirmGiftNoteAdded,
   canConfirmResolved,
   canCreateException,
@@ -383,14 +384,24 @@ export async function markFulfilled(_prev: ActionResult, formData: FormData): Pr
 }
 
 // ---- Address update (skips outreach/customer-response entirely) -----------
+//
+// Two separate steps, since Mary doesn't always have the corrected address
+// the moment she logs the exception:
+//   1. updateCorrectedAddress — any of the 3 roles, any time. Mary (usually)
+//      saves it as soon as the customer gives it to her, which may be right
+//      when she logs the exception or a while after. Notifies Fulfillment
+//      the moment it first becomes available, since that's the actual
+//      signal Camille can act — logging the exception alone already
+//      notified everyone generically, but that's not necessarily "ready".
+//   2. markAddressUpdated — Camille/Admin only, once the address exists.
+//      She's the one who actually applies it in ShipStation, so she's the
+//      one who confirms it's done.
 
-const AddressUpdateSchema = z.object({
+const CorrectedAddressSchema = z.object({
   correctedAddress: z.string().trim().min(1, "Enter the corrected address"),
-  trackingNumber: z.string().trim().optional(),
-  carrier: z.string().trim().optional(),
 });
 
-export async function markAddressUpdated(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+export async function updateCorrectedAddress(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
   const id = requireExceptionId(formData);
   const user = await getCurrentUser();
   if (!canEditException(user.role)) {
@@ -402,12 +413,57 @@ export async function markAddressUpdated(_prev: ActionResult, formData: FormData
   if (exception.exceptionType !== "ADDRESS_UPDATE") {
     return { error: "This action is only for address-update exceptions." };
   }
+
+  const parsed = CorrectedAddressSchema.safeParse({
+    correctedAddress: formData.get("correctedAddress"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
+  }
+
+  const justBecameAvailable = !exception.correctedAddress && parsed.data.correctedAddress;
+
+  await db.exception.update({
+    where: { id },
+    data: { correctedAddress: parsed.data.correctedAddress, lastUpdatedById: user.id },
+  });
+  await logEvent(id, user.id, `Corrected address saved: ${parsed.data.correctedAddress}`);
+  if (justBecameAvailable) {
+    await notifyRoles(["FULFILLMENT"], {
+      exceptionId: id,
+      message: `Order #${exception.orderNumber} — corrected address is in, ready for you to update in ShipStation.`,
+      excludeUserId: user.id,
+    });
+  }
+  revalidateAll(id);
+  return undefined;
+}
+
+const MarkAddressUpdatedSchema = z.object({
+  trackingNumber: z.string().trim().optional(),
+  carrier: z.string().trim().optional(),
+});
+
+export async function markAddressUpdated(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
+  const id = requireExceptionId(formData);
+  const user = await getCurrentUser();
+  if (!canConfirmAddressUpdated(user.role)) {
+    return { error: "Only Fulfillment or an admin can confirm this." };
+  }
+
+  const exception = await db.exception.findUnique({ where: { id } });
+  if (!exception) return { error: "Not found." };
+  if (exception.exceptionType !== "ADDRESS_UPDATE") {
+    return { error: "This action is only for address-update exceptions." };
+  }
+  if (!exception.correctedAddress) {
+    return { error: "Enter the corrected address first." };
+  }
   if (exception.stage !== "LOGGED") {
     return { error: "Already marked updated." };
   }
 
-  const parsed = AddressUpdateSchema.safeParse({
-    correctedAddress: formData.get("correctedAddress"),
+  const parsed = MarkAddressUpdatedSchema.safeParse({
     trackingNumber: formData.get("trackingNumber") || undefined,
     carrier: formData.get("carrier") || undefined,
   });
@@ -418,7 +474,6 @@ export async function markAddressUpdated(_prev: ActionResult, formData: FormData
   await db.exception.update({
     where: { id },
     data: {
-      correctedAddress: parsed.data.correctedAddress,
       trackingNumber: parsed.data.trackingNumber,
       carrier: parsed.data.carrier,
       shippedAt: parsed.data.trackingNumber ? new Date() : undefined,
@@ -431,10 +486,15 @@ export async function markAddressUpdated(_prev: ActionResult, formData: FormData
   await logEvent(
     id,
     user.id,
-    `Address corrected and updated in ShipStation: ${parsed.data.correctedAddress}` +
+    "Address corrected and updated in ShipStation" +
       (parsed.data.trackingNumber ? ` (tracking: ${parsed.data.trackingNumber})` : "")
   );
   await notifyOnStageChange(id, exception.orderNumber, "FULFILLED", "ADDRESS_UPDATED", user.id);
+  await notifyRoles(["OUTREACH"], {
+    exceptionId: id,
+    message: `Order #${exception.orderNumber} — address corrected in ShipStation, you're clear to let the customer know.`,
+    excludeUserId: user.id,
+  });
   revalidateAll(id);
   return undefined;
 }

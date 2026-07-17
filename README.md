@@ -45,10 +45,17 @@ never the direct stage editor.
 If the customer chooses a refund instead of a replacement, `FULFILLED` is skipped — an admin can confirm
 resolution directly once the refund is issued.
 
-**Address updates work differently.** There's no customer choice to gather — Mary already has the
-corrected address when she logs it — so this type skips outreach/customer-response entirely:
-`LOGGED → FULFILLED (address corrected) → CONFIRMED_RESOLVED`. The detail page swaps in a single
-"corrected address" field and hides the outreach section for this type.
+**Address updates work differently.** There's no customer choice to gather, so this type skips outreach/
+customer-response entirely: `LOGGED → FULFILLED (address corrected) → CONFIRMED_RESOLVED`. Entering the
+corrected address and confirming it's been applied are two separate steps, since Mary doesn't always have
+the address the moment she logs it:
+- Anyone can save/edit the corrected address at any time — as soon as Mary logs the exception if she
+  already has it, or later once the customer replies with it. The moment it's saved, Fulfillment gets a
+  notification it's ready to act on (separate from the generic "new exception" notification everyone gets
+  at logging time, since that doesn't necessarily mean it's actionable yet).
+- Only Fulfillment (or an admin) can mark it updated in ShipStation — she's the one actually applying the
+  correction, so she's the one confirming it's done. This also notifies Outreach that it's clear to let the
+  customer know, and Admin that it's ready for final sign-off.
 
 **Damaged/lost exceptions get an extra, independent checkbox** for whether a claim's been filed with the
 carrier (UPS/FedEx/etc.) — this tracks cost recovery from the carrier, which is unrelated to whether the
