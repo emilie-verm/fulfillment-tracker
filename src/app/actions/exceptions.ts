@@ -60,16 +60,16 @@ async function notifyOnStageChange(
   resolutionType: ResolutionType | null,
   actorId: string
 ) {
-  if (newStage === "CUSTOMER_RESPONDED" && resolutionType === "REPLACEMENT_SHIPPED") {
+  if (
+    newStage === "CUSTOMER_RESPONDED" &&
+    (resolutionType === "REPLACEMENT_SHIPPED" || resolutionType === "OTHER")
+  ) {
     await notifyRoles(["FULFILLMENT"], {
       exceptionId,
       message: `Order #${orderNumber} — customer responded, ready for you to fulfill.`,
       excludeUserId: actorId,
     });
-  } else if (
-    newStage === "CUSTOMER_RESPONDED" &&
-    (resolutionType === "REFUNDED" || resolutionType === "OTHER")
-  ) {
+  } else if (newStage === "CUSTOMER_RESPONDED" && resolutionType === "REFUNDED") {
     await notifyRoles(["ADMIN"], {
       exceptionId,
       message: `Order #${orderNumber} — customer responded, ready to confirm resolved.`,
@@ -350,7 +350,11 @@ export async function markFulfilled(_prev: ActionResult, formData: FormData): Pr
   if (exception.stage !== "CUSTOMER_RESPONDED") {
     return { error: "Can only mark fulfilled after the customer has responded." };
   }
-  if (exception.resolutionType !== "REPLACEMENT_SHIPPED" && user.role !== "ADMIN") {
+  if (
+    exception.resolutionType !== "REPLACEMENT_SHIPPED" &&
+    exception.resolutionType !== "OTHER" &&
+    user.role !== "ADMIN"
+  ) {
     return { error: "This exception isn't resolved via a reship — nothing for fulfillment to ship." };
   }
 
@@ -752,8 +756,7 @@ export async function confirmResolved(_prev: ActionResult, formData: FormData): 
 
   const eligible =
     exception.stage === "FULFILLED" ||
-    (exception.stage === "CUSTOMER_RESPONDED" &&
-      (exception.resolutionType === "REFUNDED" || exception.resolutionType === "OTHER"));
+    (exception.stage === "CUSTOMER_RESPONDED" && exception.resolutionType === "REFUNDED");
 
   if (!eligible) {
     return { error: "Not yet ready to confirm — the corrected order hasn't gone out or been resolved." };

@@ -1,5 +1,5 @@
 import "server-only";
-import type { ExceptionStage, Prisma } from "@prisma/client";
+import type { ExceptionStage, Prisma, ResolutionType } from "@prisma/client";
 import { TERMINAL_STAGES } from "@/lib/constants";
 
 export type ExceptionSearchParams = {
@@ -35,7 +35,10 @@ export function buildExceptionWhere(
     where.stage = { notIn: TERMINAL_STAGES };
   }
   if (params.resolutionType) {
-    where.resolutionType = params.resolutionType as Prisma.EnumResolutionTypeNullableFilter["equals"];
+    // Dashboard tiles link here with a comma-separated list (e.g. "ready to
+    // fulfill" spans two resolution types) — same pattern as `stage` above.
+    const resolutionTypes = params.resolutionType.split(",").filter(Boolean) as ResolutionType[];
+    where.resolutionType = resolutionTypes.length > 1 ? { in: resolutionTypes } : resolutionTypes[0];
   }
   if (params.exceptionType) {
     where.exceptionType = params.exceptionType as Prisma.EnumExceptionTypeFilter["equals"];

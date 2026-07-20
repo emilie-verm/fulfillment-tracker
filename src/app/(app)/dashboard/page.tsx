@@ -14,14 +14,14 @@ export default async function DashboardPage() {
         orderBy: { stageChangedAt: "asc" },
       }),
       db.exception.findMany({
-        where: { stage: "CUSTOMER_RESPONDED", resolutionType: "REPLACEMENT_SHIPPED" },
+        where: { stage: "CUSTOMER_RESPONDED", resolutionType: { in: ["REPLACEMENT_SHIPPED", "OTHER"] } },
         orderBy: { stageChangedAt: "asc" },
       }),
       db.exception.findMany({
         where: {
           OR: [
             { stage: "FULFILLED" },
-            { stage: "CUSTOMER_RESPONDED", resolutionType: { in: ["REFUNDED", "OTHER"] } },
+            { stage: "CUSTOMER_RESPONDED", resolutionType: "REFUNDED" },
           ],
         },
         orderBy: { stageChangedAt: "asc" },
@@ -61,7 +61,7 @@ export default async function DashboardPage() {
         <StatTile
           label="Ready for Camille"
           value={readyToFulfill.length}
-          href="/exceptions?stage=CUSTOMER_RESPONDED&resolutionType=REPLACEMENT_SHIPPED"
+          href="/exceptions?stage=CUSTOMER_RESPONDED&resolutionType=REPLACEMENT_SHIPPED,OTHER"
         />
         <StatTile
           label="Low/OOS needing website update"

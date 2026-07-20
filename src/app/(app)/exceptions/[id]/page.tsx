@@ -78,7 +78,9 @@ export default async function ExceptionDetailPage({
     canEdit &&
     !skipsOutreach &&
     exception.stage === "CUSTOMER_RESPONDED" &&
-    (exception.resolutionType === "REPLACEMENT_SHIPPED" || user.role === "ADMIN");
+    (exception.resolutionType === "REPLACEMENT_SHIPPED" ||
+      exception.resolutionType === "OTHER" ||
+      user.role === "ADMIN");
   const canMarkAddressUpdated =
     canConfirmAddressUpdated(user.role) &&
     isAddressUpdate &&
@@ -87,8 +89,7 @@ export default async function ExceptionDetailPage({
   const canMarkGiftNoteAdded = canConfirmGiftNoteAdded(user.role) && isGiftNote && exception.stage === "LOGGED";
   const canConfirm =
     exception.stage === "FULFILLED" ||
-    (exception.stage === "CUSTOMER_RESPONDED" &&
-      (exception.resolutionType === "REFUNDED" || exception.resolutionType === "OTHER"));
+    (exception.stage === "CUSTOMER_RESPONDED" && exception.resolutionType === "REFUNDED");
 
   return (
     <div className="space-y-6">
