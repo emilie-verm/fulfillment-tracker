@@ -31,7 +31,7 @@ mirror of order data.
 Each exception moves through a fixed sequence, and only the last step counts as "crossed off":
 
 ```
-LOGGED → OUTREACH_SENT → CUSTOMER_RESPONDED → FULFILLED → CONFIRMED_RESOLVED
+LOGGED → OUTREACH_SENT → CUSTOMER_RESPONDED → READY_FOR_FULFILLMENT → FULFILLED → CONFIRMED_RESOLVED
                       ↘ CLOSED_NO_RESPONSE (customer never replies)
 ```
 
@@ -42,8 +42,13 @@ already knows the customer's choice when she logs a reship exception). `CONFIRME
 exception: it's only reachable through the dedicated admin confirm action (or the full admin override panel),
 never the direct stage editor.
 
-If the customer chooses a refund instead of a replacement, `FULFILLED` is skipped — an admin can confirm
-resolution directly once the refund is issued.
+Recording a customer response that resolves via reship moves the exception straight into
+`READY_FOR_FULFILLMENT` — a dedicated queue for what's actually waiting on Camille, distinct from
+`CUSTOMER_RESPONDED` itself. It's what the dashboard's "Ready for Camille" tile tracks.
+
+If the customer chooses a refund instead of a replacement, the exception stays at `CUSTOMER_RESPONDED` and
+`FULFILLED`/`READY_FOR_FULFILLMENT` are skipped entirely — an admin can confirm resolution directly once the
+refund is issued.
 
 **Address updates work differently.** There's no customer choice to gather, so this type skips outreach/
 customer-response entirely: `LOGGED → FULFILLED (address corrected) → CONFIRMED_RESOLVED`. Entering the

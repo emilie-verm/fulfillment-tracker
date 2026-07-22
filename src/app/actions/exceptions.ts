@@ -36,6 +36,7 @@ const STAGES = [
   "LOGGED",
   "OUTREACH_SENT",
   "CUSTOMER_RESPONDED",
+  "READY_FOR_FULFILLMENT",
   "FULFILLED",
   "CONFIRMED_RESOLVED",
   "CLOSED_NO_RESPONSE",
@@ -47,6 +48,7 @@ const DIRECT_EDITABLE_STAGES = [
   "LOGGED",
   "OUTREACH_SENT",
   "CUSTOMER_RESPONDED",
+  "READY_FOR_FULFILLMENT",
   "FULFILLED",
   "CLOSED_NO_RESPONSE",
 ] as const;
@@ -60,7 +62,7 @@ async function notifyOnStageChange(
   resolutionType: ResolutionType | null,
   actorId: string
 ) {
-  if (newStage === "CUSTOMER_RESPONDED" && resolutionType === "REPLACEMENT_SHIPPED") {
+  if (newStage === "READY_FOR_FULFILLMENT") {
     await notifyRoles(["FULFILLMENT"], {
       exceptionId,
       message: `Order #${orderNumber} — customer responded, ready for you to fulfill.`,
@@ -285,10 +287,16 @@ export async function recordCustomerResponse(_prev: ActionResult, formData: Form
     return { error: parsed.error.issues[0]?.message ?? "Invalid input." };
   }
 
+  // A reship moves straight into the fulfillment queue — Camille has
+  // everything she needs. Refund/other resolutions stay at
+  // CUSTOMER_RESPONDED since those go to Emilie for sign-off, not Camille.
+  const nextStage: ExceptionStage =
+    parsed.data.resolutionType === "REPLACEMENT_SHIPPED" ? "READY_FOR_FULFILLMENT" : "CUSTOMER_RESPONDED";
+
   await db.exception.update({
     where: { id },
     data: {
-      stage: "CUSTOMER_RESPONDED",
+      stage: nextStage,
       stageChangedAt: new Date(),
       customerChoice: parsed.data.customerChoice,
       resolutionType: parsed.data.resolutionType,
@@ -300,7 +308,7 @@ export async function recordCustomerResponse(_prev: ActionResult, formData: Form
     user.id,
     `Recorded customer response: ${parsed.data.customerChoice}`
   );
-  await notifyOnStageChange(id, exception.orderNumber, "CUSTOMER_RESPONDED", parsed.data.resolutionType, user.id);
+  await notifyOnStageChange(id, exception.orderNumber, nextStage, parsed.data.resolutionType, user.id);
   revalidateAll(id);
   return undefined;
 }
@@ -347,8 +355,14 @@ export async function markFulfilled(_prev: ActionResult, formData: FormData): Pr
 
   const exception = await db.exception.findUnique({ where: { id } });
   if (!exception) return { error: "Not found." };
-  if (exception.stage !== "CUSTOMER_RESPONDED") {
-    return { error: "Can only mark fulfilled after the customer has responded." };
+  // Normal path: it's been queued in READY_FOR_FULFILLMENT. Admin override:
+  // ship it directly from CUSTOMER_RESPONDED even if the resolution wasn't
+  // a reship (e.g. deciding to send a replacement instead of the refund
+  // the customer originally picked).
+  const isReadyForFulfillment = exception.stage === "READY_FOR_FULFILLMENT";
+  const isAdminOverride = exception.stage === "CUSTOMER_RESPONDED" && user.role === "ADMIN";
+  if (!isReadyForFulfillment && !isAdminOverride) {
+    return { error: "Can only mark fulfilled once it's ready for fulfillment." };
   }
   if (exception.resolutionType !== "REPLACEMENT_SHIPPED" && user.role !== "ADMIN") {
     return { error: "This exception isn't resolved via a reship — nothing for fulfillment to ship." };

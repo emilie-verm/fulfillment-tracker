@@ -39,6 +39,7 @@ enum ExceptionStage {
   LOGGED // Camille logged the exception
   OUTREACH_SENT // Mary emailed the customer
   CUSTOMER_RESPONDED // Customer replied and made a choice
+  READY_FOR_FULFILLMENT // Customer chose a reship — queued for Camille to act on
   FULFILLED // Camille shipped the replacement / took the fulfillment action
   CONFIRMED_RESOLVED // Admin verified the corrected order actually went out / refund landed
   CLOSED_NO_RESPONSE // Customer never responded after follow-up; parked, not "forgotten"

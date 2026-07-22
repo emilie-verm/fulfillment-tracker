@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "ExceptionStage" ADD VALUE 'READY_FOR_FULFILLMENT';

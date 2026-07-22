@@ -77,8 +77,8 @@ export default async function ExceptionDetailPage({
   const canMarkFulfilled =
     canEdit &&
     !skipsOutreach &&
-    exception.stage === "CUSTOMER_RESPONDED" &&
-    (exception.resolutionType === "REPLACEMENT_SHIPPED" || user.role === "ADMIN");
+    (exception.stage === "READY_FOR_FULFILLMENT" ||
+      (exception.stage === "CUSTOMER_RESPONDED" && user.role === "ADMIN"));
   const canMarkAddressUpdated =
     canConfirmAddressUpdated(user.role) &&
     isAddressUpdate &&
@@ -218,6 +218,8 @@ export default async function ExceptionDetailPage({
                   </p>
                 )}
               </div>
+            ) : exception.stage === "READY_FOR_FULFILLMENT" ? (
+              <p className="text-sm text-zinc-400">Waiting on Camille to fulfill.</p>
             ) : (
               <p className="text-sm text-zinc-400">
                 Nothing to ship yet — waiting on outreach / customer response.
