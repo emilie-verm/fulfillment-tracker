@@ -220,6 +220,10 @@ export default async function ExceptionDetailPage({
               </div>
             ) : exception.stage === "READY_FOR_FULFILLMENT" ? (
               <p className="text-sm text-zinc-400">Waiting on Camille to fulfill.</p>
+            ) : exception.resolutionType && exception.resolutionType !== "REPLACEMENT_SHIPPED" ? (
+              <p className="text-sm text-zinc-500">
+                Resolved via {RESOLUTION_TYPE_LABELS[exception.resolutionType]} — no shipment needed.
+              </p>
             ) : (
               <p className="text-sm text-zinc-400">
                 Nothing to ship yet — waiting on outreach / customer response.
