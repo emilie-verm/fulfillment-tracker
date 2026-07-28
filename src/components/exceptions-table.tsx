@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Exception } from "@prisma/client";
 import { AgingFlag, ExceptionTypeBadge, StageBadge } from "@/components/badges";
+import { formatDate } from "@/lib/dates";
 
 // Groups exceptions by order number so multiple exceptions on the same order
 // render as one cluster instead of looking like unrelated rows — otherwise
@@ -58,7 +59,7 @@ export function ExceptionsTable({ exceptions }: { exceptions: Exception[] }) {
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-xs text-zinc-400">
-                    {exception.createdAt.toLocaleDateString()}
+                    {formatDate(exception.createdAt)}
                   </span>
                   <AgingFlag stageChangedAt={exception.stageChangedAt} stage={exception.stage} />
                   <StageBadge stage={exception.stage} />

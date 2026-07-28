@@ -3,6 +3,7 @@ import { canCommentOnStock, canConfirmWebsiteUpdate, canEditStock, getCurrentUse
 import { getCurrentStockLevels } from "@/lib/stock";
 import { StockStatusBadge } from "@/components/badges";
 import { STOCK_STATUS_COLORS, STOCK_STATUS_LABELS } from "@/lib/constants";
+import { formatDateTime } from "@/lib/dates";
 import AddStockForm from "./add-stock-form";
 import { ArchiveControl, StockCommentsSection, WebsiteUpdatedControl } from "./stock-forms";
 import type { StockStatus } from "@prisma/client";
@@ -44,7 +45,7 @@ export default async function StockPage() {
             <p className="font-medium text-zinc-900">{level.productName}</p>
             {level.notes && <p className="mt-0.5 text-sm text-zinc-600">{level.notes}</p>}
             <p className="mt-1 text-xs text-zinc-400">
-              {level.checkedBy.name} · {level.checkedAt.toLocaleString()}
+              {level.checkedBy.name} · {formatDateTime(level.checkedAt)}
               {level.archivedAt && level.archivedBy && (
                 <> · archived by {level.archivedBy.name}</>
               )}
@@ -140,7 +141,7 @@ export default async function StockPage() {
                 {check.productName} <StockStatusBadge status={check.status} />
               </span>
               <span className="text-xs text-zinc-400">
-                {check.checkedBy.name} · {check.checkedAt.toLocaleString()}
+                {check.checkedBy.name} · {formatDateTime(check.checkedAt)}
               </span>
             </li>
           ))}

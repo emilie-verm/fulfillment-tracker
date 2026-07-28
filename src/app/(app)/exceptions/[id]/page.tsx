@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { canConfirmAddressUpdated, canConfirmGiftNoteAdded, canEditException, getCurrentUser } from "@/lib/dal";
 import { AgingFlag, ExceptionTypeBadge, StageBadge } from "@/components/badges";
 import { RESOLUTION_TYPE_LABELS, isAddressUpdateType, isGiftNoteType, showsCarrierClaim } from "@/lib/constants";
+import { formatDateTime } from "@/lib/dates";
 import {
   AdminEditForm,
   CarrierClaimForm,
@@ -214,7 +215,7 @@ export default async function ExceptionDetailPage({
                 </p>
                 {exception.shippedAt && (
                   <p className="text-xs text-zinc-400">
-                    {exception.shippedAt.toLocaleString()}
+                    {formatDateTime(exception.shippedAt)}
                   </p>
                 )}
               </div>
@@ -293,7 +294,7 @@ export default async function ExceptionDetailPage({
         {exception.confirmedResolvedAt ? (
           <p className="text-sm text-emerald-800">
             Confirmed resolved by {exception.confirmedResolvedBy?.name} on{" "}
-            {exception.confirmedResolvedAt.toLocaleString()}.
+            {formatDateTime(exception.confirmedResolvedAt)}.
           </p>
         ) : canConfirm && user.role === "ADMIN" ? (
           <ConfirmResolvedForm exceptionId={exception.id} />
@@ -336,9 +337,9 @@ export default async function ExceptionDetailPage({
       <section className="space-y-2">
         <h2 className="text-sm font-semibold text-zinc-900">Activity history</h2>
         <p className="text-xs text-zinc-500">
-          Created by {exception.createdBy.name} on {exception.createdAt.toLocaleString()}
+          Created by {exception.createdBy.name} on {formatDateTime(exception.createdAt)}
           {exception.lastUpdatedBy && (
-            <> · last updated by {exception.lastUpdatedBy.name} on {exception.updatedAt.toLocaleString()}</>
+            <> · last updated by {exception.lastUpdatedBy.name} on {formatDateTime(exception.updatedAt)}</>
           )}
         </p>
         <ul className="divide-y divide-zinc-100 rounded-lg border border-zinc-200 bg-white">
@@ -346,7 +347,7 @@ export default async function ExceptionDetailPage({
             <li key={event.id} className="p-3 text-sm">
               <p className="text-zinc-700">{event.action}</p>
               <p className="text-xs text-zinc-400">
-                {event.actor.name} · {event.createdAt.toLocaleString()}
+                {event.actor.name} · {formatDateTime(event.createdAt)}
               </p>
             </li>
           ))}

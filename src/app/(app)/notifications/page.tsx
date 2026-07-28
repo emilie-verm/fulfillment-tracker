@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/dal";
+import { formatDateTime } from "@/lib/dates";
 import { markAllNotificationsRead, markNotificationReadAndGo } from "@/app/actions/notifications";
 
 export const dynamic = "force-dynamic";
@@ -57,7 +58,7 @@ export default async function NotificationsPage() {
                   {notification.message}
                 </span>
                 <span className="whitespace-nowrap text-xs text-zinc-400">
-                  {notification.createdAt.toLocaleString()}
+                  {formatDateTime(notification.createdAt)}
                 </span>
               </button>
             </form>

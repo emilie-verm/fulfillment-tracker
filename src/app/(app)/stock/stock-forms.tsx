@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { addStockComment, confirmWebsiteUpdated, toggleStockArchive } from "@/app/actions/stock";
+import { formatDate, formatDateTime } from "@/lib/dates";
 import type { StockCheckComment, User } from "@prisma/client";
 
 function ErrorText({ error }: { error?: string }) {
@@ -30,7 +31,7 @@ export function WebsiteUpdatedControl({
     return confirmed ? (
       <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700">
         ✓ Updated by {confirmedByName}
-        {confirmedAt ? ` · ${confirmedAt.toLocaleDateString()}` : ""}
+        {confirmedAt ? ` · ${formatDate(confirmedAt)}` : ""}
       </span>
     ) : (
       <span className="text-xs text-zinc-400">Not yet updated on website</span>
@@ -148,7 +149,7 @@ export function StockCommentsSection({
             <li key={comment.id} className="rounded-md border border-zinc-200 bg-zinc-50 p-2">
               <p className="whitespace-pre-wrap text-xs text-zinc-700">{renderWithMentions(comment.body)}</p>
               <p className="mt-0.5 text-[11px] text-zinc-400">
-                {comment.author.name} · {comment.createdAt.toLocaleString()}
+                {comment.author.name} · {formatDateTime(comment.createdAt)}
               </p>
             </li>
           ))}

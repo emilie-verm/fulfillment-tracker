@@ -25,6 +25,7 @@ import {
   RESOLUTION_TYPE_LABELS,
   STAGE_LABELS,
 } from "@/lib/constants";
+import { formatDateTime } from "@/lib/dates";
 import type { Exception, ExceptionComment, User } from "@prisma/client";
 
 function ErrorText({ error }: { error?: string }) {
@@ -448,7 +449,7 @@ export function CommentsSection({
           <li key={comment.id} className="rounded-md border border-zinc-200 bg-zinc-50 p-3">
             <p className="whitespace-pre-wrap text-sm text-zinc-700">{renderWithMentions(comment.body)}</p>
             <p className="mt-1 text-xs text-zinc-400">
-              {comment.author.name} · {comment.createdAt.toLocaleString()}
+              {comment.author.name} · {formatDateTime(comment.createdAt)}
             </p>
           </li>
         ))}
