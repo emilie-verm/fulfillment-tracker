@@ -21,7 +21,7 @@ export default async function DashboardPage() {
         where: {
           OR: [
             { stage: "FULFILLED" },
-            { stage: "CUSTOMER_RESPONDED", resolutionType: { in: ["REFUNDED", "OTHER"] } },
+            { stage: "CUSTOMER_RESPONDED", resolutionType: "REFUNDED" },
           ],
         },
         orderBy: { stageChangedAt: "asc" },
@@ -73,7 +73,7 @@ export default async function DashboardPage() {
 
       <Section
         title="Awaiting customer response"
-        subtitle="Mary needs to reach out or is waiting to hear back."
+        subtitle="Outreach needs to reach out or is waiting to hear back."
         exceptions={awaitingResponse}
       />
       <Section

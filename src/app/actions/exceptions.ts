@@ -68,10 +68,7 @@ async function notifyOnStageChange(
       message: `Order #${orderNumber} — customer responded, ready for you to fulfill.`,
       excludeUserId: actorId,
     });
-  } else if (
-    newStage === "CUSTOMER_RESPONDED" &&
-    (resolutionType === "REFUNDED" || resolutionType === "OTHER")
-  ) {
+  } else if (newStage === "CUSTOMER_RESPONDED" && resolutionType === "REFUNDED") {
     await notifyRoles(["ADMIN"], {
       exceptionId,
       message: `Order #${orderNumber} — customer responded, ready to confirm resolved.`,
@@ -288,10 +285,15 @@ export async function recordCustomerResponse(_prev: ActionResult, formData: Form
   }
 
   // A reship moves straight into the fulfillment queue — Camille has
-  // everything she needs. Refund/other resolutions stay at
-  // CUSTOMER_RESPONDED since those go to Emilie for sign-off, not Camille.
+  // everything she needs. "Other" also often needs something shipped (it's
+  // the catch-all bucket, e.g. a pick-and-mix bag needing repacking) so it
+  // goes to the same queue rather than being assumed shipment-free. Only a
+  // refund genuinely has nothing to ship, so that one alone stays at
+  // CUSTOMER_RESPONDED, going straight to Emilie for sign-off.
   const nextStage: ExceptionStage =
-    parsed.data.resolutionType === "REPLACEMENT_SHIPPED" ? "READY_FOR_FULFILLMENT" : "CUSTOMER_RESPONDED";
+    parsed.data.resolutionType === "REPLACEMENT_SHIPPED" || parsed.data.resolutionType === "OTHER"
+      ? "READY_FOR_FULFILLMENT"
+      : "CUSTOMER_RESPONDED";
 
   await db.exception.update({
     where: { id },
@@ -364,7 +366,11 @@ export async function markFulfilled(_prev: ActionResult, formData: FormData): Pr
   if (!isReadyForFulfillment && !isAdminOverride) {
     return { error: "Can only mark fulfilled once it's ready for fulfillment." };
   }
-  if (exception.resolutionType !== "REPLACEMENT_SHIPPED" && user.role !== "ADMIN") {
+  if (
+    exception.resolutionType !== "REPLACEMENT_SHIPPED" &&
+    exception.resolutionType !== "OTHER" &&
+    user.role !== "ADMIN"
+  ) {
     return { error: "This exception isn't resolved via a reship — nothing for fulfillment to ship." };
   }
 
@@ -766,8 +772,7 @@ export async function confirmResolved(_prev: ActionResult, formData: FormData): 
 
   const eligible =
     exception.stage === "FULFILLED" ||
-    (exception.stage === "CUSTOMER_RESPONDED" &&
-      (exception.resolutionType === "REFUNDED" || exception.resolutionType === "OTHER"));
+    (exception.stage === "CUSTOMER_RESPONDED" && exception.resolutionType === "REFUNDED");
 
   if (!eligible) {
     return { error: "Not yet ready to confirm — the corrected order hasn't gone out or been resolved." };
