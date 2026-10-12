@@ -73,7 +73,7 @@ export default async function DashboardPage() {
 
       <Section
         title="Awaiting customer response"
-        subtitle="Mary needs to reach out or is waiting to hear back."
+        subtitle="Outreach needs to reach out or is waiting to hear back."
         exceptions={awaitingResponse}
       />
       <Section
