@@ -48,7 +48,7 @@ export default function NewExceptionForm() {
         <textarea
           name="fulfillmentNotes"
           rows={3}
-          placeholder="Anything Mary should know before reaching out"
+          placeholder="Anything outreach should know before reaching out"
           className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm"
         />
       </div>

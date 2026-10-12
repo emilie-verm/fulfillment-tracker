@@ -88,8 +88,7 @@ export default async function ExceptionDetailPage({
   const canMarkGiftNoteAdded = canConfirmGiftNoteAdded(user.role) && isGiftNote && exception.stage === "LOGGED";
   const canConfirm =
     exception.stage === "FULFILLED" ||
-    (exception.stage === "CUSTOMER_RESPONDED" &&
-      (exception.resolutionType === "REFUNDED" || exception.resolutionType === "OTHER"));
+    (exception.stage === "CUSTOMER_RESPONDED" && exception.resolutionType === "REFUNDED");
 
   return (
     <div className="space-y-6">
@@ -242,7 +241,7 @@ export default async function ExceptionDetailPage({
             </p>
           ) : isGiftNote ? (
             <p className="text-sm text-zinc-400">
-              Not needed for gift notes — Mary already has the note text and fee from the customer
+              Not needed for gift notes — outreach already has the note text and fee from the customer
               when this is logged.
             </p>
           ) : (

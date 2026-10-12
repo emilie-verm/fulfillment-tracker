@@ -132,7 +132,7 @@ export function OutreachNotesForm({ exception }: { exception: Exception }) {
         name="outreachNotes"
         defaultValue={exception.outreachNotes ?? ""}
         rows={3}
-        placeholder="What Mary has said to the customer, tone, follow-up dates…"
+        placeholder="What's been said to the customer, tone, follow-up dates…"
         className="w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
       />
       <ErrorText error={state?.error} />
