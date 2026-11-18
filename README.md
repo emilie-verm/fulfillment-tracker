@@ -44,7 +44,7 @@ never the direct stage editor.
 
 Recording a customer response that resolves via reship moves the exception straight into
 `READY_FOR_FULFILLMENT` — a dedicated queue for what's actually waiting on Camille, distinct from
-`CUSTOMER_RESPONDED` itself. It's what the dashboard's "Ready for Camille" tile tracks.
+`CUSTOMER_RESPONDED` itself. It's what the dashboard's "Ready for Fulfillment" tile tracks.
 
 If the customer chooses a refund instead of a replacement, the exception stays at `CUSTOMER_RESPONDED` and
 `FULFILLED`/`READY_FOR_FULFILLMENT` are skipped entirely — an admin can confirm resolution directly once the

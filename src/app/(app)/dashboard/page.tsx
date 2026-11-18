@@ -59,7 +59,7 @@ export default async function DashboardPage() {
           href="/exceptions?stage=LOGGED,OUTREACH_SENT"
         />
         <StatTile
-          label="Ready for Camille"
+          label="Ready for Fulfillment"
           value={readyToFulfill.length}
           href="/exceptions?stage=READY_FOR_FULFILLMENT"
         />
@@ -77,7 +77,7 @@ export default async function DashboardPage() {
         exceptions={awaitingResponse}
       />
       <Section
-        title="Ready for Camille to fulfill"
+        title="Ready for Fulfillment"
         subtitle="Customer picked a replacement — needs to ship."
         exceptions={readyToFulfill}
       />
