@@ -491,8 +491,8 @@ export function CommentsSection({
   );
 }
 
-// ---- Address update: text entry (any of the 3 roles) — Mary saves this as
-// soon as she has it from the customer, whether that's right away or later --
+// ---- Address update: text entry (any of the 3 roles) — Customer Service saves this as
+// soon as they have it from the customer, whether that's right away or later --
 
 export function CorrectedAddressForm({ exception }: { exception: Exception }) {
   const [state, action, pending] = useActionState(updateCorrectedAddress, undefined);

@@ -10,15 +10,15 @@ A small internal tool for the fulfillment and ecommerce team to track:
   dashboard count without deleting the history — logging a fresh check for that product later (e.g. it's
   back in stock a few days after being marked out) automatically shows up as active again, so nothing
   ever sits in both places at once.
-- **Order exceptions + outreach** — one record per affected order line item. Camille and Mary can both log
-  and edit exceptions (a reship/damaged/address issue Mary heard about from a customer, or an OOS item
-  Camille found that needs outreach), so both sides stay in sync regardless of who created it.
+- **Order exceptions + outreach** — one record per affected order line item. Fulfillment and Customer Service can both log
+  and edit exceptions (a reship/damaged/address issue Customer Service heard about from a customer, or an OOS item
+  Fulfillment found that needs outreach), so both sides stay in sync regardless of who created it.
 - **Reship/tracking** — tracking numbers for replacement shipments, tied back to the original order.
 - **Comments** — a per-exception discussion thread for tracking updates, replacement requests, or anything
-  else worth recording between Camille and Mary.
+  else worth recording between Fulfillment and Customer Service.
 - **Resolution confirmation** — a final admin sign-off, separate from "outreach sent" or "customer responded."
 - **In-app notifications** — a bell icon that alerts the right person when responsibility hands off (e.g.
-  Camille gets notified the moment Mary records a customer response that's ready to fulfill).
+  Fulfillment gets notified the moment Customer Service records a customer response that's ready to fulfill).
 - **Dashboard + archive** — what's open, what's waiting on whom, and a searchable history. Exceptions on
   the same order are grouped together so multiple issues on one order don't read as separate orders.
 
@@ -37,8 +37,8 @@ LOGGED → OUTREACH_SENT → CUSTOMER_RESPONDED → READY_FOR_FULFILLMENT → FU
 
 The guided buttons (mark outreach sent, record customer response, mark fulfilled, close no-response) capture
 the right fields for each transition, but any of the three roles can also jump the stage directly via the
-stage editor on an exception's detail page — useful when reality doesn't fit the guided flow (e.g. Mary
-already knows the customer's choice when she logs a reship exception). `CONFIRMED_RESOLVED` is the one
+stage editor on an exception's detail page — useful when reality doesn't fit the guided flow (e.g. Customer Service
+already knows the customer's choice when they log a reship exception). `CONFIRMED_RESOLVED` is the one
 exception: it's only reachable through the dedicated admin confirm action (or the full admin override panel),
 never the direct stage editor.
 
@@ -52,10 +52,10 @@ refund is issued.
 
 **Address updates work differently.** There's no customer choice to gather, so this type skips outreach/
 customer-response entirely: `LOGGED → FULFILLED (address corrected) → CONFIRMED_RESOLVED`. Entering the
-corrected address and confirming it's been applied are two separate steps, since Mary doesn't always have
-the address the moment she logs it:
-- Anyone can save/edit the corrected address at any time — as soon as Mary logs the exception if she
-  already has it, or later once the customer replies with it. The moment it's saved, Fulfillment gets a
+corrected address and confirming it's been applied are two separate steps, since Customer Service doesn't always have
+the address the moment they log it:
+- Anyone can save/edit the corrected address at any time — as soon as Customer Service logs the exception if they
+  already have it, or later once the customer replies with it. The moment it's saved, Fulfillment gets a
   notification it's ready to act on (separate from the generic "new exception" notification everyone gets
   at logging time, since that doesn't necessarily mean it's actionable yet).
 - Only Fulfillment (or an admin) can mark it updated in ShipStation — she's the one actually applying the
@@ -77,8 +77,8 @@ admin-only website-update confirmation on stock checks.
 
 | Role | Can do |
 |---|---|
-| **Fulfillment** (Camille) | Add/edit stock levels, archive/unarchive stock entries; create/edit any exception, including stage |
-| **Outreach** (Mary) | Create/edit any exception, including stage. Read-only on stock. |
+| **Fulfillment** | Add/edit stock levels, archive/unarchive stock entries; create/edit any exception, including stage |
+| **Customer Service** | Create/edit any exception, including stage. Read-only on stock. |
 | **Admin** (Emilie) | Everything above, plus confirming final resolution, the full field/stage override panel, and managing user accounts (add, change role, reset password, deactivate/reactivate) |
 | **Viewer** | Read-only across the whole app — dashboard, exceptions, stock, archive. No create/edit buttons, forms, or stage controls anywhere. For sharing progress with leadership. |
 

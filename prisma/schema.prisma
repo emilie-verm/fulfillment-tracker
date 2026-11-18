@@ -11,8 +11,8 @@ datasource db {
 }
 
 enum Role {
-  FULFILLMENT // Camille: stock levels, full exception access, tracking/fulfillment
-  OUTREACH // Mary: full exception access, read-only stock
+  FULFILLMENT // Fulfillment team: stock levels, full exception access, tracking/fulfillment
+  OUTREACH // Customer Service (labelled "Customer Service" in the UI): full exception access, read-only stock
   ADMIN // Emilie: full access, can confirm resolution
   VIEWER // Read-only across everything — for sharing progress with leadership
 }
@@ -37,7 +37,7 @@ enum ExceptionType {
 // Only CONFIRMED_RESOLVED or CLOSED_NO_RESPONSE count as "crossed off".
 enum ExceptionStage {
   LOGGED // Camille logged the exception
-  OUTREACH_SENT // Mary emailed the customer
+  OUTREACH_SENT // Customer Service emailed the customer
   CUSTOMER_RESPONDED // Customer replied and made a choice
   READY_FOR_FULFILLMENT // Customer chose a reship — queued for Camille to act on
   FULFILLED // Camille shipped the replacement / took the fulfillment action
@@ -143,7 +143,7 @@ model Exception {
   carrier          String?
   shippedAt        DateTime?
 
-  // Mary's fields
+  // Customer Service's fields
   outreachNotes  String?
   customerChoice String?
 
@@ -160,7 +160,7 @@ model Exception {
   carrierClaimFiledBy   User?     @relation("ExceptionCarrierClaimFiledBy", fields: [carrierClaimFiledById], references: [id])
   carrierClaimReference String?
 
-  // GIFT_NOTE exceptions skip outreach/customer-response too — Mary already
+  // GIFT_NOTE exceptions skip outreach/customer-response too — Customer Service already
   // has the note text from the customer. The $5 invoice payment is tracked
   // independently of Camille physically adding the note to the order,
   // same relationship as the carrier claim above.

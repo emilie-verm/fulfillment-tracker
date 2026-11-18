@@ -81,18 +81,18 @@ export const canConfirmGiftNoteAdded = (role: Role) =>
 // Camille (or Emilie) is the one who actually applies the correction in
 // ShipStation, so she's the one who confirms it's done — distinct from who
 // can enter/edit the corrected address text itself (any of the 3 roles,
-// since Mary is usually the one relaying it from the customer).
+// since Customer Service is usually the one relaying it from the customer).
 export const canConfirmAddressUpdated = (role: Role) =>
   role === "FULFILLMENT" || role === "ADMIN";
 
 // Same "not Viewer" rule as exception comments — collaborative, not tied to
-// who can edit the underlying stock check itself (Mary can comment on stock
-// even though she's read-only on the levels).
+// who can edit the underlying stock check itself (Customer Service can comment on stock
+// even though they're read-only on the levels).
 export const canCommentOnStock = (role: Role) => role !== "VIEWER";
 
-// Camille, Mary, and Emilie can all create exceptions and edit any field on
-// one, including moving the stage directly — Mary logs reship/damaged/address
-// issues for Camille to act on, Camille logs OOS issues for Mary to reach out
+// Fulfillment, Customer Service, and Admin can all create exceptions and edit any field on
+// one, including moving the stage directly — Customer Service logs reship/damaged/address
+// issues for Fulfillment to act on, Fulfillment logs OOS issues for Customer Service to reach out
 // on, so the split by role stopped making sense. "Confirmed resolved" is the
 // one action that stays admin-only (see canConfirmResolved). VIEWER is
 // read-only across the whole app — for sharing progress with leadership.

@@ -65,7 +65,7 @@ export default async function ExceptionDetailPage({
     }),
   ]);
 
-  // Anyone (Camille, Mary, Emilie) can create/edit exceptions and change the
+  // Anyone (Fulfillment, Customer Service, Admin) can create/edit exceptions and change the
   // stage directly — the guided buttons below just capture the right fields
   // for the common transitions; eligibility depends on the current stage,
   // not on who's logged in.
