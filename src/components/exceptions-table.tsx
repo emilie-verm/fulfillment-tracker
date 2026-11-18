@@ -5,7 +5,7 @@ import { formatDate } from "@/lib/dates";
 
 // Groups exceptions by order number so multiple exceptions on the same order
 // render as one cluster instead of looking like unrelated rows — otherwise
-// it's easy to mistake them for separate orders/customers (e.g. Mary sending
+// it's easy to mistake them for separate orders/customers (e.g. Customer Service sending
 // two separate outreach emails for what's really one order with two OOS items).
 function groupByOrderNumber(exceptions: Exception[]) {
   const order: string[] = [];

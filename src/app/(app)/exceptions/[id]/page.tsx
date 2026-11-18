@@ -65,7 +65,7 @@ export default async function ExceptionDetailPage({
     }),
   ]);
 
-  // Anyone (Camille, Mary, Emilie) can create/edit exceptions and change the
+  // Anyone (Fulfillment, Customer Service, Admin) can create/edit exceptions and change the
   // stage directly — the guided buttons below just capture the right fields
   // for the common transitions; eligibility depends on the current stage,
   // not on who's logged in.
@@ -163,7 +163,7 @@ export default async function ExceptionDetailPage({
                   ) : exception.stage !== "LOGGED" ? (
                     <p className="text-sm text-emerald-700">✓ Added to the order.</p>
                   ) : (
-                    <p className="text-sm text-zinc-400">Waiting on Camille to confirm it&apos;s been added to the order.</p>
+                    <p className="text-sm text-zinc-400">Waiting on Fulfillment to confirm it&apos;s been added to the order.</p>
                   )}
                 </div>
               </div>
@@ -184,10 +184,10 @@ export default async function ExceptionDetailPage({
                     {canMarkAddressUpdated ? (
                       <MarkAddressUpdatedForm exceptionId={exception.id} />
                     ) : exception.correctedAddress ? (
-                      <p className="text-sm text-zinc-400">Waiting on Camille to update it in ShipStation.</p>
+                      <p className="text-sm text-zinc-400">Waiting on Fulfillment to update it in ShipStation.</p>
                     ) : (
                       <p className="text-sm text-zinc-400">
-                        Waiting on the corrected address before Camille can update ShipStation.
+                        Waiting on the corrected address before Fulfillment can update ShipStation.
                       </p>
                     )}
                   </div>
@@ -219,7 +219,7 @@ export default async function ExceptionDetailPage({
                 )}
               </div>
             ) : exception.stage === "READY_FOR_FULFILLMENT" ? (
-              <p className="text-sm text-zinc-400">Waiting on Camille to fulfill.</p>
+              <p className="text-sm text-zinc-400">Waiting on Fulfillment to fulfill.</p>
             ) : exception.resolutionType && exception.resolutionType !== "REPLACEMENT_SHIPPED" ? (
               <p className="text-sm text-zinc-500">
                 Resolved via {RESOLUTION_TYPE_LABELS[exception.resolutionType]} — no shipment needed.

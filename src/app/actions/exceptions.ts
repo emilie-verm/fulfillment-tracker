@@ -405,11 +405,11 @@ export async function markFulfilled(_prev: ActionResult, formData: FormData): Pr
 
 // ---- Address update (skips outreach/customer-response entirely) -----------
 //
-// Two separate steps, since Mary doesn't always have the corrected address
-// the moment she logs the exception:
-//   1. updateCorrectedAddress — any of the 3 roles, any time. Mary (usually)
-//      saves it as soon as the customer gives it to her, which may be right
-//      when she logs the exception or a while after. Notifies Fulfillment
+// Two separate steps, since Customer Service doesn't always have the corrected address
+// the moment they log the exception:
+//   1. updateCorrectedAddress — any of the 3 roles, any time. Customer Service (usually)
+//      saves it as soon as the customer gives it to them, which may be right
+//      when they log the exception or a while after. Notifies Fulfillment
 //      the moment it first becomes available, since that's the actual
 //      signal Camille can act — logging the exception alone already
 //      notified everyone generically, but that's not necessarily "ready".
@@ -555,7 +555,7 @@ export async function updateGiftNoteText(_prev: ActionResult, formData: FormData
 }
 
 // Independent of whether the note's been added to the order — tracks the
-// separate $5 invoice Mary sends, same "independent fact" relationship as
+// separate $5 invoice Customer Service sends, same "independent fact" relationship as
 // the carrier claim below.
 export async function updateGiftNoteInvoicePaid(_prev: ActionResult, formData: FormData): Promise<ActionResult> {
   const id = requireExceptionId(formData);

@@ -61,11 +61,11 @@ export const PRODUCT_RESOLUTION_TYPES: ExceptionType[] = [
   "OTHER",
 ];
 
-// ADDRESS_UPDATE skips outreach/customer-response entirely — Mary already
-// has the corrected address from the customer when she logs it.
+// ADDRESS_UPDATE skips outreach/customer-response entirely — Customer Service already
+// has the corrected address from the customer when they log it.
 export const isAddressUpdateType = (type: ExceptionType) => type === "ADDRESS_UPDATE";
 
-// GIFT_NOTE skips outreach/customer-response too — Mary already has the
+// GIFT_NOTE skips outreach/customer-response too — Customer Service already has the
 // note text and the $5 fee is invoiced separately, not negotiated with the
 // customer through this flow.
 export const isGiftNoteType = (type: ExceptionType) => type === "GIFT_NOTE";
@@ -109,7 +109,7 @@ export function agingLevel(stageChangedAt: Date, stage: ExceptionStage): "ok" | 
 
 export const ROLE_LABELS = {
   FULFILLMENT: "Fulfillment",
-  OUTREACH: "Outreach",
+  OUTREACH: "Customer Service",
   ADMIN: "Admin",
   VIEWER: "Viewer (read-only)",
 } as const;
